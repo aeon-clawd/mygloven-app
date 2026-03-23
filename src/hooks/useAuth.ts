@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { mockProfile, type Profile, type Role } from '../data/mockData'
-
-const DEMO_MODE = !import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL === 'https://placeholder.supabase.co'
+import { supabaseAdmin } from '../lib/supabaseAdmin'
+import type { Profile, Role } from '../data/mockData'
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
@@ -11,36 +10,16 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
 
   const fetchProfile = useCallback(async (userId: string) => {
-    if (DEMO_MODE) {
-      const stored = localStorage.getItem('mygloven_demo_profile')
-      if (stored) {
-        setProfile(JSON.parse(stored))
-      }
-      return
-    }
-
     const { data } = await supabase
       .from('profiles')
       .select('*')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single()
 
-    if (data) setProfile(data)
+    if (data) setProfile(data as Profile)
   }, [])
 
   useEffect(() => {
-    if (DEMO_MODE) {
-      const stored = localStorage.getItem('mygloven_demo_user')
-      if (stored) {
-        const demoUser = JSON.parse(stored)
-        setUser(demoUser)
-        const storedProfile = localStorage.getItem('mygloven_demo_profile')
-        if (storedProfile) setProfile(JSON.parse(storedProfile))
-      }
-      setLoading(false)
-      return
-    }
-
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) fetchProfile(session.user.id)
@@ -60,72 +39,59 @@ export function useAuth() {
   }, [fetchProfile])
 
   const signIn = async (email: string, password: string) => {
-    if (DEMO_MODE) {
-      const demoUser = { id: 'demo-user', email } as User
-      setUser(demoUser)
-      localStorage.setItem('mygloven_demo_user', JSON.stringify(demoUser))
-      const stored = localStorage.getItem('mygloven_demo_profile')
-      if (stored) setProfile(JSON.parse(stored))
-      return { error: null }
-    }
-
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     return { error }
   }
 
-  const signUp = async (email: string, password: string, displayName: string) => {
-    if (DEMO_MODE) {
-      const demoUser = { id: 'demo-user', email } as User
-      setUser(demoUser)
-      localStorage.setItem('mygloven_demo_user', JSON.stringify(demoUser))
-      return { error: null }
-    }
-
+  const signUp = async (email: string, password: string, nombre: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { display_name: displayName } },
+      options: { data: { nombre } },
     })
     return { error }
   }
 
   const signOut = async () => {
-    if (DEMO_MODE) {
-      setUser(null)
-      setProfile(null)
-      localStorage.removeItem('mygloven_demo_user')
-      localStorage.removeItem('mygloven_demo_profile')
-      return
-    }
-
     await supabase.auth.signOut()
     setProfile(null)
   }
 
-  const setRole = async (role: Role, displayName: string) => {
-    const newProfile: Profile = {
-      ...mockProfile,
-      role,
-      display_name: displayName,
-      user_id: user?.id ?? 'demo-user',
-    }
-
-    if (DEMO_MODE) {
-      setProfile(newProfile)
-      localStorage.setItem('mygloven_demo_profile', JSON.stringify(newProfile))
-      return
-    }
-
-    const { error } = await supabase.from('profiles').upsert({
-      user_id: user?.id,
-      role,
-      display_name: displayName,
-    })
+  const setRole = async (rol: Role) => {
+    if (!user) return
+    const { error } = await supabase
+      .from('profiles')
+      .update({ rol, estado: 'activo' })
+      .eq('id', user.id)
 
     if (!error) {
-      setProfile(newProfile)
+      await fetchProfile(user.id)
     }
   }
 
-  return { user, profile, loading, signIn, signUp, signOut, setRole }
+  const createUser = async (email: string, password: string, nombre: string, rol: Role) => {
+    if (!supabaseAdmin) return { error: { message: 'Admin client not configured' } }
+
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { nombre },
+    })
+
+    if (error) return { error }
+
+    // Update the auto-created profile with the correct role and estado
+    if (data.user) {
+      await supabaseAdmin.from('profiles').update({
+        rol,
+        estado: 'activo',
+        nombre,
+      }).eq('id', data.user.id)
+    }
+
+    return { error: null, user: data.user }
+  }
+
+  return { user, profile, loading, signIn, signUp, signOut, setRole, createUser }
 }

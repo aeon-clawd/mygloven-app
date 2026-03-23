@@ -1,20 +1,20 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router'
-import { useAuth } from '../../hooks/useAuth'
-import RegisterForm from '../../components/auth/RegisterForm'
+import { useState } from "react"
+import { useNavigate } from "react-router"
+import { useAuth } from "../../hooks/useAuth"
+import RegisterForm from "../../components/auth/RegisterForm"
 
 export default function RegisterPage() {
   const { signUp } = useAuth()
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
 
-  const handleRegister = async (email: string, password: string, displayName: string) => {
+  const handleRegister = async (email: string, password: string, nombre: string) => {
     setError(null)
-    const { error } = await signUp(email, password, displayName)
+    const { error } = await signUp(email, password, nombre)
     if (error) {
       setError(error.message)
     } else {
-      navigate('/select-role')
+      navigate("/select-role")
     }
   }
 
@@ -27,7 +27,7 @@ export default function RegisterPage() {
             <span className="text-coral">|</span>
             <span className="text-white">G</span>
           </h1>
-          <p className="text-gray-400 text-sm">Create your account</p>
+          <p className="text-gray-400 text-sm">Crea tu cuenta</p>
         </div>
         <div className="bg-surface rounded-2xl border border-border p-8">
           <RegisterForm onSubmit={handleRegister} error={error} />

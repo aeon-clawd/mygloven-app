@@ -1,58 +1,57 @@
-import { useAuth } from '../../hooks/useAuth'
-import StatCard from '../../components/shared/StatCard'
+import { useAuth } from "../../hooks/useAuth"
+import StatCard from "../../components/shared/StatCard"
 import {
   venueStats, artistStats, providerStats, organizerStats,
   mockActivity,
-} from '../../data/mockData'
+} from "../../data/mockData"
+import type { Role } from "../../data/mockData"
 import {
   CalendarPlus, CreditCard, Star, CheckCircle,
   MessageCircle, Calendar,
-} from 'lucide-react'
+} from "lucide-react"
 
 const activityIcons: Record<string, React.ElementType> = {
-  'calendar-plus': CalendarPlus,
-  'credit-card': CreditCard,
-  'star': Star,
-  'check-circle': CheckCircle,
-  'message-circle': MessageCircle,
-  'calendar': Calendar,
+  "calendar-plus": CalendarPlus,
+  "credit-card": CreditCard,
+  "star": Star,
+  "check-circle": CheckCircle,
+  "message-circle": MessageCircle,
+  "calendar": Calendar,
 }
 
-const statsMap = {
+const statsMap: Partial<Record<Role, typeof venueStats>> = {
+  admin: venueStats,
   venue: venueStats,
-  artist: artistStats,
-  provider: providerStats,
-  organizer: organizerStats,
+  artista: artistStats,
+  proveedor: providerStats,
+  cliente: organizerStats,
 }
 
 export default function DashboardPage() {
   const { profile } = useAuth()
-  const role = profile?.role ?? 'venue'
-  const stats = statsMap[role]
+  const rol = profile?.rol ?? "venue"
+  const stats = statsMap[rol] ?? venueStats
 
   return (
     <div className="space-y-8">
-      {/* Welcome */}
       <div>
         <h2 className="text-2xl font-semibold">
-          Welcome back, {profile?.display_name ?? 'User'}
+          Hola, {profile?.nombre ?? "Usuario"}
         </h2>
         <p className="text-gray-400 mt-1">
-          Here's what's happening with your {role} account today.
+          Esto es lo que pasa hoy en tu cuenta.
         </p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
           <StatCard key={stat.label} {...stat} />
         ))}
       </div>
 
-      {/* Recent Activity */}
       <div className="bg-surface rounded-xl border border-border">
         <div className="p-5 border-b border-border">
-          <h3 className="font-semibold">Recent Activity</h3>
+          <h3 className="font-semibold">Actividad reciente</h3>
         </div>
         <div className="divide-y divide-border">
           {mockActivity.map((item) => {

@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router'
-import { useAuth } from '../../hooks/useAuth'
-import LoginForm from '../../components/auth/LoginForm'
+import { useState } from "react"
+import { useNavigate } from "react-router"
+import { useAuth } from "../../hooks/useAuth"
+import LoginForm from "../../components/auth/LoginForm"
 
 export default function LoginPage() {
   const { signIn } = useAuth()
@@ -14,7 +14,7 @@ export default function LoginPage() {
     if (error) {
       setError(error.message)
     } else {
-      navigate('/dashboard')
+      navigate("/dashboard")
     }
   }
 
@@ -27,7 +27,7 @@ export default function LoginPage() {
             <span className="text-coral">|</span>
             <span className="text-white">G</span>
           </h1>
-          <p className="text-gray-400 text-sm">Sign in to your dashboard</p>
+          <p className="text-gray-400 text-sm">Accede a tu panel</p>
         </div>
         <div className="bg-surface rounded-2xl border border-border p-8">
           <LoginForm onSubmit={handleLogin} error={error} />

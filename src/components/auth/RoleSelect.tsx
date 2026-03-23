@@ -1,29 +1,29 @@
-import { Building2, Music, Wrench, CalendarDays } from 'lucide-react'
-import type { Role } from '../../data/mockData'
+import { Building2, Music, Wrench, CalendarDays } from "lucide-react"
+import type { Role } from "../../data/mockData"
 
 const roles: { value: Role; label: string; description: string; icon: React.ElementType }[] = [
   {
-    value: 'venue',
-    label: 'Venue Owner',
-    description: 'List your space, manage bookings, and connect with artists and organizers.',
+    value: "venue",
+    label: "Propietario de Venue",
+    description: "Publica tu espacio, gestiona reservas y conecta con artistas y organizadores.",
     icon: Building2,
   },
   {
-    value: 'artist',
-    label: 'Artist',
-    description: 'Showcase your talent, get booked for gigs, and grow your audience.',
+    value: "artista",
+    label: "Artista",
+    description: "Muestra tu talento, consigue actuaciones y haz crecer tu audiencia.",
     icon: Music,
   },
   {
-    value: 'provider',
-    label: 'Service Provider',
-    description: 'Offer sound, lighting, catering and other event services.',
+    value: "proveedor",
+    label: "Proveedor de Servicios",
+    description: "Ofrece sonido, iluminación, catering y otros servicios para eventos.",
     icon: Wrench,
   },
   {
-    value: 'organizer',
-    label: 'Event Organizer',
-    description: 'Plan events, find venues, hire artists, and manage budgets.',
+    value: "cliente",
+    label: "Organizador de Eventos",
+    description: "Planifica eventos, encuentra venues, contrata artistas y gestiona presupuestos.",
     icon: CalendarDays,
   },
 ]

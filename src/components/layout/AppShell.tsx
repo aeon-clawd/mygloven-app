@@ -1,7 +1,7 @@
-import { Outlet, Navigate } from 'react-router'
-import { useAuth } from '../../hooks/useAuth'
-import Sidebar from './Sidebar'
-import TopBar from './TopBar'
+import { Outlet, Navigate } from "react-router"
+import { useAuth } from "../../hooks/useAuth"
+import Sidebar from "./Sidebar"
+import TopBar from "./TopBar"
 
 export default function AppShell() {
   const { user, profile, loading } = useAuth()
@@ -18,7 +18,7 @@ export default function AppShell() {
     return <Navigate to="/login" replace />
   }
 
-  if (!profile?.role) {
+  if (!profile?.rol) {
     return <Navigate to="/select-role" replace />
   }
 
