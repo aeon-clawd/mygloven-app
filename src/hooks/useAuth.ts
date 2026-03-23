@@ -20,9 +20,9 @@ export function useAuth() {
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
+      if (session?.user) await fetchProfile(session.user.id)
       setLoading(false)
     })
 
@@ -39,7 +39,11 @@ export function useAuth() {
   }, [fetchProfile])
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (!error && data.user) {
+      setUser(data.user)
+      await fetchProfile(data.user.id)
+    }
     return { error }
   }
 
