@@ -4,7 +4,6 @@ import AppShell from "../components/layout/AppShell"
 
 import LoginPage from "../pages/auth/LoginPage"
 import RegisterPage from "../pages/auth/RegisterPage"
-import SelectRolePage from "../pages/auth/SelectRolePage"
 
 const DashboardPage = lazy(() => import("../pages/dashboard/DashboardPage"))
 const SpacePage = lazy(() => import("../pages/venue/SpacePage"))
@@ -32,7 +31,7 @@ function LazyPage({ children }: { children: React.ReactNode }) {
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   { path: "/register", element: <RegisterPage /> },
-  { path: "/select-role", element: <SelectRolePage /> },
+
   {
     path: "/",
     element: <AppShell />,

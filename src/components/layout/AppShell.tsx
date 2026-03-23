@@ -19,7 +19,7 @@ export default function AppShell() {
   }
 
   if (!profile?.rol) {
-    return <Navigate to="/select-role" replace />
+    return <Navigate to="/login" replace />
   }
 
   return (
