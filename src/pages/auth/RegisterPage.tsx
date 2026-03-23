@@ -14,7 +14,7 @@ export default function RegisterPage() {
     if (error) {
       setError(error.message)
     } else {
-      navigate("/select-role")
+      navigate("/dashboard")
     }
   }
 
@@ -22,11 +22,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-bg px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-1">
-            <span className="text-gray-400">my</span>
-            <span className="text-coral">|</span>
-            <span className="text-white">G</span>
-          </h1>
+          <img src="/images/mygloven-logo-white.svg" alt="mygloven" className="h-14 mx-auto mb-4" />
           <p className="text-gray-400 text-sm">Crea tu cuenta</p>
         </div>
         <div className="bg-surface rounded-2xl border border-border p-8">

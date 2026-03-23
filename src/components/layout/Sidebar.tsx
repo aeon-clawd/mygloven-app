@@ -53,11 +53,9 @@ export default function Sidebar() {
   const sidebarContent = (
     <>
       <div className="p-5 border-b border-border">
-        <h1 className="text-2xl font-bold">
-          <span className="text-gray-400">my</span>
-          <span className="text-coral">|</span>
-          <span className="text-white">G</span>
-        </h1>
+        <a href="/dashboard">
+          <img src="/images/mygloven-logo-white.svg" alt="mygloven" className="h-12" />
+        </a>
       </div>
 
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">

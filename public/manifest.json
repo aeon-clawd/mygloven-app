@@ -1,0 +1,26 @@
+{
+  "name": "mygloven",
+  "short_name": "mygloven",
+  "description": "my'G — tu asistente para producir eventos",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2a",
+  "theme_color": "#1a1a2a",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/mygloven-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
