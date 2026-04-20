@@ -1,130 +1,154 @@
-import { NavLink, useNavigate } from "react-router"
-import {
-  LayoutDashboard, Building2, Calendar, BookOpen, BarChart3,
-  Settings, User, Image, Music, Wrench, FileText, Users,
-  CalendarDays, Search, PieChart, Sparkles, MessageCircle,
-  LogOut, Menu, X, Shield,
-} from "lucide-react"
-import { useState } from "react"
-import { useAuth } from "../../hooks/useAuth"
-import { roleNavItems } from "../../data/mockData"
+"use client";
 
-const iconMap: Record<string, React.ElementType> = {
-  "layout-dashboard": LayoutDashboard,
-  "building-2": Building2,
-  "calendar": Calendar,
-  "book-open": BookOpen,
-  "bar-chart-3": BarChart3,
-  "settings": Settings,
-  "user": User,
-  "image": Image,
-  "music": Music,
-  "wrench": Wrench,
-  "file-text": FileText,
-  "users": Users,
-  "calendar-days": CalendarDays,
-  "search": Search,
-  "pie-chart": PieChart,
-  "sparkles": Sparkles,
-  "message-circle": MessageCircle,
-  "shield": Shield,
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
+import { Logo } from "./logo";
+import { LogOut } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import type { LucideIcon } from "lucide-react";
+import type { Profile } from "@/types/database";
+
+export interface NavItem {
+  label: string;
+  href: string;
+  icon: LucideIcon;
 }
 
-const roleLabels: Record<string, string> = {
-  admin: "Admin",
-  venue: "Venue",
-  artista: "Artista",
-  proveedor: "Proveedor",
-  cliente: "Cliente",
+interface SidebarProps {
+  items: NavItem[];
+  role: string;
 }
 
-export default function Sidebar() {
-  const { profile, signOut } = useAuth()
-  const navigate = useNavigate()
-  const [mobileOpen, setMobileOpen] = useState(false)
+export function Sidebar({ items, role }: SidebarProps) {
+  const pathname = usePathname();
 
-  const navItems = profile?.rol ? roleNavItems[profile.rol] : []
-
-  const handleSignOut = async () => {
-    await signOut()
-    navigate("/login")
-  }
-
-  const sidebarContent = (
-    <>
-      <div className="p-5 border-b border-border">
-        <a href="/dashboard">
-          <img src="/images/mygloven-logo-white.svg" alt="mygloven" className="h-12" />
-        </a>
+  return (
+    <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-border bg-surface">
+      <div className="flex h-16 items-center gap-3 border-b border-border px-6">
+        <Logo className="h-6" />
+        <span className="text-xs font-medium text-text-muted uppercase tracking-wider">
+          {role}
+        </span>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {navItems.map(({ label, icon, path }) => {
-          const Icon = iconMap[icon] ?? LayoutDashboard
+      <nav className="flex-1 space-y-1 p-4">
+        {items.map((item) => {
+          const isActive = pathname.startsWith(item.href);
+          const Icon = item.icon;
           return (
-            <NavLink
-              key={path}
-              to={path}
-              onClick={() => setMobileOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-coral/10 text-coral"
-                    : "text-gray-400 hover:text-white hover:bg-white/[0.04]"
-                }`
-              }
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-accent/10 text-accent"
+                  : "text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+              )}
             >
-              <Icon className="w-5 h-5 shrink-0" />
-              {label}
-            </NavLink>
-          )
+              <Icon size={18} />
+              {item.label}
+            </Link>
+          );
         })}
       </nav>
 
-      <div className="p-4 border-t border-border">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 rounded-full bg-coral/20 flex items-center justify-center text-coral text-sm font-semibold shrink-0">
-            {profile?.nombre?.charAt(0)?.toUpperCase() ?? "U"}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium truncate">{profile?.nombre ?? "Usuario"}</p>
-            <p className="text-xs text-gray-500 capitalize">{roleLabels[profile?.rol ?? ""] ?? "Sin rol"}</p>
-          </div>
-        </div>
-        <button
-          onClick={handleSignOut}
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors w-full px-1"
-        >
-          <LogOut className="w-4 h-4" />
-          Cerrar sesión
-        </button>
+      <div className="border-t border-border p-4">
+        <UserMenu />
       </div>
-    </>
-  )
+    </aside>
+  );
+}
+
+function UserMenu() {
+  const router = useRouter();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single()
+          .then(({ data }) => {
+            if (data) setProfile(data as Profile);
+          });
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  async function handleSignOut() {
+    const res = await fetch("/auth/signout", { method: "POST" });
+    if (res.redirected) {
+      router.push(new URL(res.url).pathname);
+    } else {
+      router.push("/select-role");
+    }
+    router.refresh();
+  }
+
+  const initials = profile?.nombre
+    ? profile.nombre
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "U";
 
   return (
-    <>
+    <div className="relative" ref={menuRef}>
       <button
-        onClick={() => setMobileOpen(!mobileOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-surface rounded-lg border border-border"
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-surface-hover transition-colors"
       >
-        {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        {profile?.avatar_url ? (
+          <Image
+            src={profile.avatar_url}
+            alt=""
+            width={32}
+            height={32}
+            className="h-8 w-8 rounded-full object-cover"
+          />
+        ) : (
+          <div className="h-8 w-8 rounded-full bg-accent/20 flex items-center justify-center text-accent text-xs font-bold">
+            {initials}
+          </div>
+        )}
+        <span className="truncate">{profile?.nombre || "Mi cuenta"}</span>
       </button>
 
-      {mobileOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-40"
-          onClick={() => setMobileOpen(false)}
-        />
+      {open && (
+        <div className="absolute bottom-full left-0 mb-2 w-full rounded-lg border border-border bg-surface p-1 shadow-xl">
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-error hover:bg-error/10 transition-colors"
+          >
+            <LogOut size={16} />
+            Cerrar sesión
+          </button>
+        </div>
       )}
-
-      <aside
-        className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-surface-alt border-r border-border flex flex-col transition-transform lg:translate-x-0 ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        {sidebarContent}
-      </aside>
-    </>
-  )
+    </div>
+  );
 }
