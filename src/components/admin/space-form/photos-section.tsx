@@ -19,9 +19,10 @@ const TAG_OPTIONS = [
 interface PhotosSectionProps {
   images: SpaceImage[];
   onChange: (images: SpaceImage[]) => void;
+  showWarnings?: boolean;
 }
 
-export function PhotosSection({ images, onChange }: PhotosSectionProps) {
+export function PhotosSection({ images, onChange, showWarnings = true }: PhotosSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
@@ -29,9 +30,11 @@ export function PhotosSection({ images, onChange }: PhotosSectionProps) {
   const hasPrincipal = images.some((i) => i.tag === "principal");
   const hasBaseStudio = images.some((i) => i.tag === "base_space_studio");
   const warnings: string[] = [];
-  if (images.length > 0 && images.length < 5) warnings.push("Mínimo 5 fotos para activar el espacio");
-  if (images.length > 0 && !hasPrincipal) warnings.push("Falta una foto etiquetada como Principal");
-  if (images.length > 0 && !hasBaseStudio) warnings.push("Falta una foto etiquetada como Base Space Studio");
+  if (showWarnings) {
+    if (images.length > 0 && images.length < 5) warnings.push("Mínimo 5 fotos para activar el espacio");
+    if (images.length > 0 && !hasPrincipal) warnings.push("Falta una foto etiquetada como Principal");
+    if (images.length > 0 && !hasBaseStudio) warnings.push("Falta una foto etiquetada como Base Space Studio");
+  }
 
   function handleFiles(files: FileList | null) {
     if (!files) return;

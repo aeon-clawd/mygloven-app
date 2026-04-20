@@ -17,16 +17,6 @@ const estadoBadge: Record<string, "success" | "warning" | "error" | "default"> =
   eliminado: "error",
 };
 
-const tipoLabels: Record<string, string> = {
-  sala: "Sala",
-  rooftop: "Rooftop",
-  restaurante: "Restaurante",
-  hotel: "Hotel",
-  aire_libre: "Aire libre",
-  local_privado: "Local privado",
-  otro: "Otro",
-};
-
 export default function AdminEspaciosPage() {
   const router = useRouter();
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -108,10 +98,6 @@ export default function AdminEspaciosPage() {
                 </p>
               )}
               <div className="flex gap-4 text-xs text-text-muted">
-                {venue.tipo && (
-                  <span>{tipoLabels[venue.tipo] || venue.tipo}</span>
-                )}
-                {venue.aforo && <span>Aforo: {venue.aforo}</span>}
                 {venue.precio_desde && (
                   <span>
                     Desde {venue.precio_desde}€/{venue.unidad_precio}

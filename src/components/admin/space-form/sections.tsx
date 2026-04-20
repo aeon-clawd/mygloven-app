@@ -5,9 +5,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Chips } from "@/components/ui/chips";
 import { Toggle } from "@/components/ui/toggle";
+import { Button } from "@/components/ui/button";
+import { Plus, Trash2 } from "lucide-react";
 import {
   type SpaceFormData,
-  ZONAS_OPTIONS,
+  type AnnexFormData,
+  DEFAULT_ANNEX,
   TIPOS_EVENTO_OPTIONS,
   TIPO_ESPACIO_OPTIONS,
 } from "./types";
@@ -181,92 +184,12 @@ export function UbicacionSection({ form, update }: SectionProps) {
   );
 }
 
-export function CapacidadSection({ form, update }: SectionProps) {
-  return (
-    <section id="capacidad" className="scroll-mt-24 rounded-xl border border-border bg-surface p-6">
-      <SectionHeader
-        title="Capacidad y físico"
-        subtitle="Dimensiones, aforo y zonas disponibles en el espacio"
-      />
-      <div className="space-y-5">
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <Label required>Aforo máximo de pie</Label>
-            <Input
-              type="number"
-              value={form.config_de_pie}
-              onChange={(e) => update("config_de_pie", e.target.value)}
-              placeholder="200"
-            />
-          </div>
-          <div>
-            <Label>Aforo máximo sentado</Label>
-            <Input
-              type="number"
-              value={form.config_sentado}
-              onChange={(e) => update("config_sentado", e.target.value)}
-              placeholder="120"
-            />
-          </div>
-          <div>
-            <Label required>Metros cuadrados</Label>
-            <Input
-              type="number"
-              value={form.metros_cuadrados}
-              onChange={(e) => update("metros_cuadrados", e.target.value)}
-              placeholder="350"
-            />
-          </div>
-        </div>
-
-        <div>
-          <Label required>Tipo</Label>
-          <Chips
-            options={TIPO_ESPACIO_OPTIONS}
-            selected={form.tipo_espacio ? [form.tipo_espacio] : []}
-            onChange={(sel) => update("tipo_espacio", sel[0] || "")}
-            multiple={false}
-          />
-        </div>
-
-        <div>
-          <Label required>Zonas del espacio</Label>
-          <Chips
-            options={ZONAS_OPTIONS}
-            selected={form.zonas}
-            onChange={(sel) => update("zonas", sel)}
-          />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-export function TipoDeUsoSection({ form, update }: SectionProps) {
-  return (
-    <section id="tipo-de-uso" className="scroll-mt-24 rounded-xl border border-border bg-surface p-6">
-      <SectionHeader
-        title="Tipo de uso"
-        subtitle="Qué tipos de eventos se pueden realizar en este espacio"
-      />
-      <div>
-        <Label required>Tipos de evento permitidos</Label>
-        <Chips
-          options={TIPOS_EVENTO_OPTIONS}
-          selected={form.tipos_evento}
-          onChange={(sel) => update("tipos_evento", sel)}
-        />
-      </div>
-    </section>
-  );
-}
-
 export function PricingSection({ form, update }: SectionProps) {
   return (
     <section id="pricing" className="scroll-mt-24 rounded-xl border border-border bg-surface p-6">
       <SectionHeader
         title="Pricing"
-        subtitle="Rango de precio orientativo para productores"
+        subtitle="Rango orientativo del espacio completo. Cada anexo puede tener su propio precio."
       />
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-4">
@@ -331,51 +254,216 @@ export function FotosSection({ form, update }: SectionProps) {
   );
 }
 
-export function ContactoSection({ form, update }: SectionProps) {
+export function AnexosSection({ form, update }: SectionProps) {
+  function updateAnnex(id: string, field: keyof AnnexFormData, value: unknown) {
+    update(
+      "annexes",
+      form.annexes.map((a) => (a.id === id ? { ...a, [field]: value } : a))
+    );
+  }
+
+  function addAnnex() {
+    const id =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `new-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    update("annexes", [
+      ...form.annexes,
+      { ...DEFAULT_ANNEX, id, orden: form.annexes.length },
+    ]);
+  }
+
+  function removeAnnex(annex: AnnexFormData) {
+    if (annex.existing) {
+      update("annexesToDelete", [...form.annexesToDelete, annex.id]);
+    }
+    update(
+      "annexes",
+      form.annexes
+        .filter((a) => a.id !== annex.id)
+        .map((a, i) => ({ ...a, orden: i }))
+    );
+  }
+
   return (
-    <section id="contacto" className="scroll-mt-24 rounded-xl border border-border bg-surface p-6">
+    <section id="anexos" className="scroll-mt-24 rounded-xl border border-border bg-surface p-6">
       <SectionHeader
-        title="Contacto interno"
-        subtitle="Información privada del gestor del espacio. Solo visible para admins."
+        title="Anexos"
+        subtitle="Zonas o salas dentro del espacio. Cada anexo tiene su capacidad, uso, fotos y precio propios. Mínimo 1 anexo."
       />
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label>Nombre del gestor</Label>
-            <Input
-              value={form.nombre_gestor}
-              onChange={(e) => update("nombre_gestor", e.target.value)}
-              placeholder="Nombre y apellidos"
-            />
-          </div>
-          <div>
-            <Label>Email del gestor</Label>
-            <Input
-              type="email"
-              value={form.email_interno}
-              onChange={(e) => update("email_interno", e.target.value)}
-              placeholder="gestor@espacio.com"
-            />
-          </div>
+
+      {form.annexes.length === 0 && (
+        <div className="rounded-lg border border-dashed border-border p-6 text-center">
+          <p className="text-sm text-text-muted mb-3">
+            Este espacio todavía no tiene anexos. Añade al menos uno.
+          </p>
+          <Button type="button" onClick={addAnnex}>
+            <Plus size={16} /> Añadir anexo
+          </Button>
         </div>
-        <div className="max-w-xs">
-          <Label>Teléfono del gestor</Label>
+      )}
+
+      <div className="space-y-6">
+        {form.annexes.map((annex, i) => (
+          <AnnexCard
+            key={annex.id}
+            index={i}
+            annex={annex}
+            update={(field, value) => updateAnnex(annex.id, field, value)}
+            onRemove={() => removeAnnex(annex)}
+          />
+        ))}
+      </div>
+
+      {form.annexes.length > 0 && (
+        <div className="mt-6">
+          <Button type="button" variant="secondary" onClick={addAnnex}>
+            <Plus size={16} /> Añadir otro anexo
+          </Button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AnnexCard({
+  index,
+  annex,
+  update,
+  onRemove,
+}: {
+  index: number;
+  annex: AnnexFormData;
+  update: (field: keyof AnnexFormData, value: unknown) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-background p-5 space-y-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <Label required>Nombre del anexo #{index + 1}</Label>
           <Input
-            value={form.telefono_interno}
-            onChange={(e) => update("telefono_interno", e.target.value)}
-            placeholder="+34 600 000 000"
+            value={annex.nombre}
+            onChange={(e) => update("nombre", e.target.value)}
+            placeholder="Ej: Terraza, Sala principal, Barra..."
           />
         </div>
-        <div>
-          <Label>Notas internas</Label>
-          <Textarea
-            value={form.notas_internas}
-            onChange={(e) => update("notas_internas", e.target.value)}
-            placeholder="Notas privadas sobre este espacio, acuerdos, condiciones especiales..."
-          />
+        <button
+          type="button"
+          onClick={onRemove}
+          className="mt-7 rounded-lg border border-border p-2 text-text-muted hover:text-error hover:border-error/50 transition-colors"
+          title="Eliminar anexo"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
+
+      <div>
+        <p className="text-sm font-medium mb-3">Capacidad</p>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <Label required>Aforo de pie</Label>
+            <Input
+              type="number"
+              value={annex.config_de_pie}
+              onChange={(e) => update("config_de_pie", e.target.value)}
+              placeholder="200"
+            />
+          </div>
+          <div>
+            <Label>Aforo sentado</Label>
+            <Input
+              type="number"
+              value={annex.config_sentado}
+              onChange={(e) => update("config_sentado", e.target.value)}
+              placeholder="120"
+            />
+          </div>
+          <div>
+            <Label required>Metros cuadrados</Label>
+            <Input
+              type="number"
+              value={annex.metros_cuadrados}
+              onChange={(e) => update("metros_cuadrados", e.target.value)}
+              placeholder="350"
+            />
+          </div>
         </div>
       </div>
-    </section>
+
+      <div>
+        <Label required>Uso</Label>
+        <Chips
+          options={TIPO_ESPACIO_OPTIONS}
+          selected={annex.tipo_espacio ? [annex.tipo_espacio] : []}
+          onChange={(sel) => update("tipo_espacio", sel[0] || "")}
+          multiple={false}
+        />
+      </div>
+
+      <div>
+        <Label required>Tipo de uso</Label>
+        <Chips
+          options={TIPOS_EVENTO_OPTIONS}
+          selected={annex.tipos_evento}
+          onChange={(sel) => update("tipos_evento", sel)}
+        />
+      </div>
+
+      <div>
+        <p className="text-sm font-medium mb-3">Pricing</p>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <Label required>Desde (€)</Label>
+            <Input
+              type="number"
+              value={annex.precio_desde}
+              onChange={(e) => update("precio_desde", e.target.value)}
+              placeholder="500"
+            />
+          </div>
+          <div>
+            <Label required>Hasta (€)</Label>
+            <Input
+              type="number"
+              value={annex.precio_hasta}
+              onChange={(e) => update("precio_hasta", e.target.value)}
+              placeholder="3000"
+            />
+          </div>
+          <div>
+            <Label required>Unidad</Label>
+            <Select
+              value={annex.unidad_precio}
+              onChange={(e) => update("unidad_precio", e.target.value)}
+            >
+              <option value="hora">Por hora</option>
+              <option value="evento">Por evento</option>
+              <option value="dia">Por día</option>
+            </Select>
+          </div>
+        </div>
+        <div className="mt-4 max-w-xs">
+          <Label>Precio de referencia interno</Label>
+          <Input
+            type="number"
+            value={annex.precio_referencia_interno}
+            onChange={(e) => update("precio_referencia_interno", e.target.value)}
+            placeholder="1500"
+          />
+          <p className="text-xs text-text-muted mt-1">Solo visible para admins.</p>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-sm font-medium mb-3">Fotos del anexo</p>
+        <PhotosSection
+          images={annex.images}
+          onChange={(images) => update("images", images)}
+          showWarnings={false}
+        />
+      </div>
+    </div>
   );
 }
 

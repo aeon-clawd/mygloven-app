@@ -28,7 +28,9 @@ export interface Venue {
   slug: string | null;
   descripcion: string | null;
   descripcion_corta: string | null;
+  pais: string | null;
   ciudad: string | null;
+  barrio: string | null;
   direccion: string | null;
   coordenadas: { lat: number; lng: number } | null;
   mostrar_direccion: boolean;
@@ -36,13 +38,6 @@ export interface Venue {
   instagram: string | null;
   tipo: TipoVenue | null;
   subtipo: string | null;
-  aforo: number | null;
-  metros_cuadrados: number | null;
-  tipo_espacio: TipoEspacio | null;
-  config_sentado: number | null;
-  config_de_pie: number | null;
-  tipos_evento: string[];
-  zonas: string[];
   precio_desde: number | null;
   precio_hasta: number | null;
   unidad_precio: UnidadPrecio;
@@ -52,8 +47,6 @@ export interface Venue {
   tags: string[] | null;
   telefono: string | null;
   email: string | null;
-  email_interno: string | null;
-  telefono_interno: string | null;
   verificado: boolean;
   exterior: boolean | null;
   rider: boolean | null;
@@ -64,6 +57,26 @@ export interface Venue {
   horario_flexible: boolean;
   fechas_bloqueadas: string[];
   geo: { lat: number; lng: number } | null;
+  created_at: string;
+  updated_at: string;
+  annexes?: VenueAnnex[];
+}
+
+export interface VenueAnnex {
+  id: string;
+  venue_id: string;
+  nombre: string;
+  config_de_pie: number | null;
+  config_sentado: number | null;
+  metros_cuadrados: number | null;
+  tipo_espacio: TipoEspacio | null;
+  tipos_evento: string[];
+  images: VenueImage[];
+  precio_desde: number | null;
+  precio_hasta: number | null;
+  unidad_precio: UnidadPrecio;
+  precio_referencia_interno: number | null;
+  orden: number;
   created_at: string;
   updated_at: string;
 }

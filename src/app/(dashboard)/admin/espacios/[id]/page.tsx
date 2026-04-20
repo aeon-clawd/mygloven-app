@@ -4,22 +4,27 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { SpaceForm } from "@/components/admin/space-form/space-form";
 import { createClient } from "@/lib/supabase/client";
-import type { Venue } from "@/types/database";
+import type { Venue, VenueAnnex } from "@/types/database";
 
 export default function EditarEspacioPage() {
   const params = useParams();
   const [venue, setVenue] = useState<Venue | null>(null);
+  const [annexes, setAnnexes] = useState<VenueAnnex[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       const supabase = createClient();
-      const { data } = await supabase
-        .from("venues")
-        .select("*")
-        .eq("id", params.id)
-        .single();
-      setVenue(data as Venue | null);
+      const [venueRes, annexesRes] = await Promise.all([
+        supabase.from("venues").select("*").eq("id", params.id).single(),
+        supabase
+          .from("venue_annexes")
+          .select("*")
+          .eq("venue_id", params.id)
+          .order("orden", { ascending: true }),
+      ]);
+      setVenue(venueRes.data as Venue | null);
+      setAnnexes((annexesRes.data as VenueAnnex[]) || []);
       setLoading(false);
     }
     load();
@@ -41,5 +46,5 @@ export default function EditarEspacioPage() {
     );
   }
 
-  return <SpaceForm venue={venue} />;
+  return <SpaceForm venue={venue} annexes={annexes} />;
 }

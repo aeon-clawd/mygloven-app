@@ -1,3 +1,20 @@
+export interface AnnexFormData {
+  id: string;
+  existing: boolean;
+  nombre: string;
+  config_de_pie: string;
+  config_sentado: string;
+  metros_cuadrados: string;
+  tipo_espacio: string;
+  tipos_evento: string[];
+  images: SpaceImage[];
+  precio_desde: string;
+  precio_hasta: string;
+  unidad_precio: string;
+  precio_referencia_interno: string;
+  orden: number;
+}
+
 export interface SpaceFormData {
   nombre: string;
   slug: string;
@@ -11,22 +28,14 @@ export interface SpaceFormData {
   direccion: string;
   mostrar_direccion: boolean;
   coordenadas: { lat: number; lng: number } | null;
-  config_de_pie: string;
-  config_sentado: string;
-  metros_cuadrados: string;
-  tipo_espacio: string;
-  zonas: string[];
-  tipos_evento: string[];
   precio_desde: string;
   precio_hasta: string;
   unidad_precio: string;
   precio_referencia_interno: string;
   images: SpaceImage[];
-  nombre_gestor: string;
-  email_interno: string;
-  telefono_interno: string;
-  notas_internas: string;
   estado: string;
+  annexes: AnnexFormData[];
+  annexesToDelete: string[];
 }
 
 export interface SpaceImage {
@@ -41,11 +50,9 @@ export interface SpaceImage {
 export const SECTION_IDS = [
   "identidad",
   "ubicacion",
-  "capacidad",
-  "tipo-de-uso",
   "pricing",
   "fotos",
-  "contacto",
+  "anexos",
   "estado",
 ] as const;
 
@@ -54,23 +61,11 @@ export type SectionId = (typeof SECTION_IDS)[number];
 export const SECTION_LABELS: Record<SectionId, string> = {
   identidad: "Identidad",
   ubicacion: "Ubicación",
-  capacidad: "Capacidad y físico",
-  "tipo-de-uso": "Tipo de uso",
   pricing: "Pricing",
   fotos: "Fotos",
-  contacto: "Contacto interno",
+  anexos: "Anexos",
   estado: "Estado",
 };
-
-export const ZONAS_OPTIONS = [
-  { value: "sala_principal", label: "Sala principal" },
-  { value: "terraza", label: "Terraza" },
-  { value: "backstage", label: "Backstage" },
-  { value: "barra", label: "Barra" },
-  { value: "escenario", label: "Escenario" },
-  { value: "comedor", label: "Comedor" },
-  { value: "otro", label: "Otro" },
-];
 
 export const TIPOS_EVENTO_OPTIONS = [
   { value: "fiesta_privada", label: "Fiesta privada" },
@@ -97,16 +92,26 @@ export const REQUIRED_FIELDS: (keyof SpaceFormData)[] = [
   "ciudad",
   "barrio",
   "direccion",
-  "config_de_pie",
-  "metros_cuadrados",
-  "tipo_espacio",
-  "zonas",
-  "tipos_evento",
   "precio_desde",
   "precio_hasta",
   "unidad_precio",
   "estado",
 ];
+
+export const DEFAULT_ANNEX: Omit<AnnexFormData, "id" | "orden"> = {
+  existing: false,
+  nombre: "",
+  config_de_pie: "",
+  config_sentado: "",
+  metros_cuadrados: "",
+  tipo_espacio: "",
+  tipos_evento: [],
+  images: [],
+  precio_desde: "",
+  precio_hasta: "",
+  unidad_precio: "evento",
+  precio_referencia_interno: "",
+};
 
 export const DEFAULT_FORM: SpaceFormData = {
   nombre: "",
@@ -121,20 +126,12 @@ export const DEFAULT_FORM: SpaceFormData = {
   direccion: "",
   mostrar_direccion: false,
   coordenadas: null,
-  config_de_pie: "",
-  config_sentado: "",
-  metros_cuadrados: "",
-  tipo_espacio: "",
-  zonas: [],
-  tipos_evento: [],
   precio_desde: "",
   precio_hasta: "",
   unidad_precio: "evento",
   precio_referencia_interno: "",
   images: [],
-  nombre_gestor: "",
-  email_interno: "",
-  telefono_interno: "",
-  notas_internas: "",
   estado: "borrador",
+  annexes: [],
+  annexesToDelete: [],
 };
