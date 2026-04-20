@@ -92,9 +92,6 @@ export const REQUIRED_FIELDS: (keyof SpaceFormData)[] = [
   "ciudad",
   "barrio",
   "direccion",
-  "precio_desde",
-  "precio_hasta",
-  "unidad_precio",
   "estado",
 ];
 

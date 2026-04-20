@@ -189,12 +189,12 @@ export function PricingSection({ form, update }: SectionProps) {
     <section id="pricing" className="scroll-mt-24 rounded-xl border border-border bg-surface p-6">
       <SectionHeader
         title="Pricing"
-        subtitle="Rango orientativo del espacio completo. Cada anexo puede tener su propio precio."
+        subtitle="Rango orientativo del espacio completo (opcional). Cada anexo puede tener su propio precio."
       />
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <Label required>Desde (€)</Label>
+            <Label>Desde (€)</Label>
             <Input
               type="number"
               value={form.precio_desde}
@@ -203,7 +203,7 @@ export function PricingSection({ form, update }: SectionProps) {
             />
           </div>
           <div>
-            <Label required>Hasta (€)</Label>
+            <Label>Hasta (€)</Label>
             <Input
               type="number"
               value={form.precio_hasta}
@@ -212,7 +212,7 @@ export function PricingSection({ form, update }: SectionProps) {
             />
           </div>
           <div>
-            <Label required>Unidad</Label>
+            <Label>Unidad</Label>
             <Select
               value={form.unidad_precio}
               onChange={(e) => update("unidad_precio", e.target.value)}
@@ -411,10 +411,10 @@ function AnnexCard({
       </div>
 
       <div>
-        <p className="text-sm font-medium mb-3">Pricing</p>
+        <p className="text-sm font-medium mb-3">Pricing (opcional)</p>
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <Label required>Desde (€)</Label>
+            <Label>Desde (€)</Label>
             <Input
               type="number"
               value={annex.precio_desde}
@@ -423,7 +423,7 @@ function AnnexCard({
             />
           </div>
           <div>
-            <Label required>Hasta (€)</Label>
+            <Label>Hasta (€)</Label>
             <Input
               type="number"
               value={annex.precio_hasta}
@@ -432,7 +432,7 @@ function AnnexCard({
             />
           </div>
           <div>
-            <Label required>Unidad</Label>
+            <Label>Unidad</Label>
             <Select
               value={annex.unidad_precio}
               onChange={(e) => update("unidad_precio", e.target.value)}
