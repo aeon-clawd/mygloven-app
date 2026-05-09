@@ -3,6 +3,7 @@ export type EstadoUsuario = "activo" | "pendiente" | "bloqueado";
 export type EstadoEvento = "borrador" | "activo" | "en_propuestas" | "cerrado" | "cancelado";
 export type EstadoSolicitud = "pendiente" | "aceptada" | "rechazada" | "info_solicitada";
 export type EstadoEspacio = "borrador" | "activo" | "pausado" | "eliminado";
+export type EstadoArtista = "borrador" | "activo" | "pausado" | "eliminado";
 export type EstadoCandidatura = "pendiente" | "aprobada" | "rechazada";
 export type TipoEspacio = "interior" | "exterior" | "mixto";
 export type UnidadPrecio = "hora" | "evento" | "dia";
@@ -129,24 +130,36 @@ export interface Candidatura {
   updated_at: string;
 }
 
+export interface ArtistImage {
+  url: string;
+  tag: "principal" | "press" | "live" | "detalle" | "otro";
+  label?: string;
+  order: number;
+}
+
 export interface Artista {
   id: string;
-  owner_id: string;
+  owner_id: string | null;
   nombre: string;
   slug: string | null;
   bio: string | null;
+  descripcion_corta: string | null;
   genero_musical: string | null;
-  rrss: string | null;
+  instagram: string | null;
   spotify: string | null;
+  soundcloud: string | null;
   youtube: string | null;
+  web: string | null;
   linktree: string | null;
+  rrss: string | null;
   telefono: string | null;
   email: string | null;
   tags: string[] | null;
   verificado: boolean;
   rider: string | null;
   avatar_url: string | null;
-  images: VenueImage[] | null;
+  images: ArtistImage[] | null;
+  estado: EstadoArtista;
   created_at: string;
   updated_at: string;
 }

@@ -4,6 +4,7 @@ import { DashboardShell } from "@/components/layout/dashboard-shell";
 import {
   LayoutDashboard,
   Building2,
+  Mic2,
   ClipboardCheck,
   Users,
   CalendarDays,
@@ -13,6 +14,7 @@ import type { NavItem } from "@/components/layout/sidebar";
 const adminNav: NavItem[] = [
   { label: "Panel", href: "/admin/panel", icon: LayoutDashboard },
   { label: "Espacios", href: "/admin/espacios", icon: Building2 },
+  { label: "Artistas", href: "/admin/artistas", icon: Mic2 },
   { label: "Candidaturas", href: "/admin/candidaturas", icon: ClipboardCheck },
   { label: "Usuarios", href: "/admin/usuarios", icon: Users },
   { label: "Eventos", href: "/admin/eventos", icon: CalendarDays },
