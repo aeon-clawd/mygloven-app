@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { PageHead } from "@/components/ui/page-head";
 import { createClient } from "@/lib/supabase/client";
@@ -130,7 +131,12 @@ export default function ExplorarPage() {
             const cover = getVenueCover(venue);
             const num = String(i + 1).padStart(3, "0");
             return (
-              <div key={venue.id} className="venue-tile" data-cursor="ver →">
+              <Link
+                key={venue.id}
+                href={`/productor/explorar/espacios/${venue.id}`}
+                className="venue-tile"
+                data-cursor="ver →"
+              >
                 <div className="ph">
                   {cover && (
                     <Image
@@ -158,7 +164,7 @@ export default function ExplorarPage() {
                     )}
                   </div>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -168,7 +174,12 @@ export default function ExplorarPage() {
             const cover = getArtistCover(artist);
             const num = String(i + 1).padStart(3, "0");
             return (
-              <div key={artist.id} className="venue-tile" data-cursor="ver →">
+              <Link
+                key={artist.id}
+                href={`/productor/explorar/artistas/${artist.id}`}
+                className="venue-tile"
+                data-cursor="ver →"
+              >
                 <div className="ph">
                   {cover && (
                     <Image
@@ -191,7 +202,7 @@ export default function ExplorarPage() {
                     <span>{artist.verificado ? "Verificado" : "Artista"}</span>
                   </div>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
