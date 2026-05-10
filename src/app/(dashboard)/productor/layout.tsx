@@ -3,7 +3,9 @@ import type { NavItem } from "@/components/layout/sidebar";
 
 const productorNav: NavItem[] = [
   { label: "Mis eventos", href: "/productor/eventos" },
-  { label: "Nuevo evento", href: "/productor/canvas" },
+  { label: "Explorar", href: "/productor/explorar" },
+  { label: "Calendario", href: "/productor/calendario" },
+  { label: "Tareas", href: "/productor/tareas" },
 ];
 
 const productorMarquee = [
