@@ -67,17 +67,7 @@ export const SECTION_LABELS: Record<SectionId, string> = {
   estado: "Estado",
 };
 
-export const TIPOS_EVENTO_OPTIONS = [
-  { value: "fiesta_privada", label: "Fiesta privada" },
-  { value: "corporate", label: "Corporate" },
-  { value: "concierto", label: "Concierto" },
-  { value: "dj_set", label: "DJ set" },
-  { value: "rodaje", label: "Rodaje" },
-  { value: "exposicion", label: "Exposición" },
-  { value: "presentacion", label: "Presentación" },
-  { value: "showcase", label: "Showcase" },
-  { value: "otro", label: "Otro" },
-];
+export { TIPOS_EVENTO as TIPOS_EVENTO_OPTIONS } from "@/lib/event-options";
 
 export const TIPO_ESPACIO_OPTIONS = [
   { value: "interior", label: "Interior" },

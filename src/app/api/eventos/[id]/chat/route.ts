@@ -21,7 +21,9 @@ export async function POST(
 
   const { data: evento, error } = await supabase
     .from("eventos")
-    .select("id, cliente_id, brief")
+    .select(
+      "id, cliente_id, tipo, ciudad, fecha_deseada, num_personas, presupuesto_min, presupuesto_max, venue_id, artistas_ids, brief"
+    )
     .eq("id", id)
     .single();
   if (error || !evento) return new Response("Evento not found", { status: 404 });
@@ -34,16 +36,37 @@ export async function POST(
     );
   }
 
+  const { data: ciudadesRows } = await supabase
+    .from("venues")
+    .select("ciudad")
+    .eq("estado", "activo")
+    .not("ciudad", "is", null);
+  const ciudades = Array.from(
+    new Set(((ciudadesRows ?? []) as { ciudad: string }[]).map((r) => r.ciudad.trim()))
+  ).sort();
+
   const modelMessages = await convertToModelMessages(messages);
 
   const result = streamText({
     model: google(CHAT_MODEL),
-    system: buildSystemPrompt((evento.brief as Record<string, unknown>) ?? {}),
+    system: buildSystemPrompt(
+      {
+        tipo: evento.tipo,
+        ciudad: evento.ciudad,
+        fecha_deseada: evento.fecha_deseada,
+        num_personas: evento.num_personas,
+        presupuesto_min: evento.presupuesto_min,
+        presupuesto_max: evento.presupuesto_max,
+        venue_id: evento.venue_id,
+        artistas_ids: (evento.artistas_ids as string[] | null) ?? [],
+        brief: (evento.brief as { catering?: string }) ?? {},
+      },
+      ciudades
+    ),
     messages: modelMessages,
     tools: buildTools(supabase, id),
-    stopWhen: stepCountIs(5),
+    stopWhen: stepCountIs(6),
     onFinish: async ({ text }) => {
-      // Persist the full UI message thread + the assistant response.
       const lastUser = messages[messages.length - 1];
       const userText = extractText(lastUser);
       const { data: cur } = await supabase

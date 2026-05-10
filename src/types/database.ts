@@ -89,16 +89,14 @@ export interface VenueImage {
   order: number;
 }
 
+/**
+ * Free-form fields stored alongside the typed columns of `eventos`.
+ * Typed fields (tipo, ciudad, fecha_deseada, num_personas, presupuesto_min/max,
+ * venue_id, artistas_ids) live as real columns. Anything not yet promoted
+ * to a column lives here.
+ */
 export interface EventoBrief {
-  tipo?: string | null;
-  ciudad?: string | null;
-  fecha?: string | null;
-  personas?: number | null;
-  presupuesto?: number | null;
-  atmosfera?: string | null;
-  espacio?: string | null;
-  catering?: string | null;
-  musica?: string | null;
+  catering?: "si" | "no" | "por_ver" | null;
   [key: string]: unknown;
 }
 
@@ -118,7 +116,12 @@ export interface Evento {
   ciudad: string | null;
   fecha_deseada: string | null;
   num_personas: number | null;
+  /** Single-value budget — kept for back-compat. Prefer min/max. */
   presupuesto: number | null;
+  presupuesto_min: number | null;
+  presupuesto_max: number | null;
+  venue_id: string | null;
+  artistas_ids: string[];
   estado: EstadoEvento;
   brief: EventoBrief;
   messages: ChatMessage[];
