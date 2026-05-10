@@ -1,14 +1,19 @@
-import { Card } from "@/components/ui/card";
+import { PageHead } from "@/components/ui/page-head";
 
 export default function EspacioEventosPage() {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Mis eventos</h1>
-      <Card>
-        <p className="text-text-secondary text-sm">
-          No tienes eventos confirmados ni en proceso.
-        </p>
-      </Card>
-    </div>
+    <>
+      <PageHead
+        eyebrow="Tu cartelera"
+        title="Mis eventos"
+        sub="Eventos confirmados y en proceso en tu espacio."
+      />
+
+      <div className="empty">
+        <div className="num">0</div>
+        <div className="msg">Sin eventos confirmados</div>
+        <span className="text-mute">Cuando aceptes una solicitud, el evento aparecerá aquí.</span>
+      </div>
+    </>
   );
 }

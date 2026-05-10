@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useState, useCallback } from "react";
+import { Pill } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Plus } from "lucide-react";
+import { Field } from "@/components/ui/field";
+import { PageHead } from "@/components/ui/page-head";
+import { Icon } from "@/components/ui/icon";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, Rol, EstadoUsuario } from "@/types/database";
 
@@ -19,7 +20,7 @@ const rolLabels: Record<string, string> = {
   proveedor: "Proveedor",
 };
 
-const estadoBadge: Record<string, "success" | "warning" | "error"> = {
+const estadoVariant: Record<string, "success" | "warning" | "error"> = {
   activo: "success",
   pendiente: "warning",
   bloqueado: "error",
@@ -40,7 +41,7 @@ export default function AdminUsuariosPage() {
     rol: "admin" as Rol,
   });
 
-  async function loadUsers() {
+  const loadUsers = useCallback(async () => {
     const supabase = createClient();
     let query = supabase.from("profiles").select("*").order("created_at", { ascending: false });
     if (filtroRol !== "todos") {
@@ -49,12 +50,12 @@ export default function AdminUsuariosPage() {
     const { data } = await query;
     setUsers((data as Profile[]) || []);
     setLoading(false);
-  }
+  }, [filtroRol]);
 
   useEffect(() => {
     setLoading(true);
     loadUsers();
-  }, [filtroRol]);
+  }, [loadUsers]);
 
   async function updateEstado(userId: string, estado: EstadoUsuario) {
     const supabase = createClient();
@@ -94,164 +95,167 @@ export default function AdminUsuariosPage() {
     loadUsers();
   }
 
+  const filtros = [
+    { k: "todos", l: "Todos" },
+    { k: "productor", l: "Productores" },
+    { k: "venue", l: "Espacios" },
+    { k: "artista", l: "Artistas" },
+    { k: "proveedor", l: "Proveedores" },
+    { k: "admin", l: "Admins" },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Usuarios</h1>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-text-secondary">Filtrar:</span>
-            <Select
-              value={filtroRol}
-              onChange={(e) => setFiltroRol(e.target.value)}
-              className="w-40"
-            >
-              <option value="todos">Todos</option>
-              <option value="productor">Productores</option>
-              <option value="venue">Espacios</option>
-              <option value="artista">Artistas</option>
-              <option value="proveedor">Proveedores</option>
-              <option value="admin">Admins</option>
-            </Select>
-          </div>
-          <Button onClick={() => setShowCreate(true)}>
-            <Plus size={16} /> Crear usuario
+    <>
+      <PageHead
+        eyebrow="Quién compone la red"
+        title="Usuarios"
+        sub="Productores, espacios, artistas y proveedores. Todo el mapa humano del sistema."
+        actions={
+          <Button variant="primary" onClick={() => setShowCreate(true)} data-cursor="crear →">
+            <Icon.plus /> Crear usuario
           </Button>
+        }
+      />
+
+      <div className="flex-row between" style={{ marginBottom: 24 }}>
+        <div className="segmented">
+          {filtros.map((f) => (
+            <button
+              key={f.k}
+              type="button"
+              className={filtroRol === f.k ? "active" : ""}
+              onClick={() => setFiltroRol(f.k)}
+              data-cursor="filtrar"
+            >
+              {f.l}
+            </button>
+          ))}
         </div>
+        <span className="text-mute">
+          {users.length} usuario{users.length !== 1 ? "s" : ""}
+        </span>
       </div>
 
       {loading ? (
-        <Card className="animate-pulse h-32" />
+        <div className="empty">
+          <div className="msg">Cargando…</div>
+        </div>
       ) : users.length === 0 ? (
-        <Card>
-          <p className="text-text-secondary text-sm">No hay usuarios registrados.</p>
-        </Card>
+        <div className="empty">
+          <div className="num">0</div>
+          <div className="msg">Sin usuarios</div>
+        </div>
       ) : (
-        <Card className="p-0 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-text-muted">
-                <th className="px-6 py-3 font-medium">Nombre</th>
-                <th className="px-6 py-3 font-medium">Email</th>
-                <th className="px-6 py-3 font-medium">Rol</th>
-                <th className="px-6 py-3 font-medium">Estado</th>
-                <th className="px-6 py-3 font-medium">Fecha</th>
-                <th className="px-6 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr
-                  key={user.id}
-                  className="border-b border-border last:border-0 hover:bg-surface-hover transition-colors"
-                >
-                  <td className="px-6 py-3 font-medium">{user.nombre}</td>
-                  <td className="px-6 py-3 text-text-secondary">{user.email}</td>
-                  <td className="px-6 py-3">
-                    <Badge>{rolLabels[user.rol]}</Badge>
-                  </td>
-                  <td className="px-6 py-3">
-                    <Badge variant={estadoBadge[user.estado]}>{user.estado}</Badge>
-                  </td>
-                  <td className="px-6 py-3 text-text-muted">
-                    {new Date(user.created_at).toLocaleDateString("es-ES")}
-                  </td>
-                  <td className="px-6 py-3">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelected(user)}
-                    >
-                      Ver
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+        <div className="table-wrap">
+          {users.map((u) => {
+            const initials = u.nombre
+              ? u.nombre
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase()
+              : "?";
+            return (
+              <button
+                type="button"
+                key={u.id}
+                className="user-row"
+                data-cursor="abrir →"
+                onClick={() => setSelected(u)}
+              >
+                <div className="avatar">{initials}</div>
+                <div>
+                  <div className="name">{u.nombre || "Sin nombre"}</div>
+                  <div className="email">{u.email}</div>
+                </div>
+                <Pill>{rolLabels[u.rol] || u.rol}</Pill>
+                <span className="text-mute">{u.ciudad || "—"}</span>
+                <Pill variant={estadoVariant[u.estado] || "default"} dot>
+                  {u.estado}
+                </Pill>
+              </button>
+            );
+          })}
+        </div>
       )}
 
-      {/* Modal detalle usuario */}
+      {/* Modal detalle */}
       <Modal
         open={!!selected}
         onClose={() => setSelected(null)}
-        title="Detalle de usuario"
+        title={selected?.nombre || "Usuario"}
       >
         {selected && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="flex-col">
+            <div className="card-grid cols-2" style={{ borderRadius: 4 }}>
               <div>
-                <p className="text-text-muted">Nombre</p>
-                <p className="font-medium">{selected.nombre}</p>
+                <div className="text-mute" style={{ marginBottom: 4 }}>
+                  EMAIL
+                </div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}>{selected.email}</div>
               </div>
               <div>
-                <p className="text-text-muted">Email</p>
-                <p className="font-medium">{selected.email}</p>
+                <div className="text-mute" style={{ marginBottom: 4 }}>
+                  CIUDAD
+                </div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600 }}>
+                  {selected.ciudad || "—"}
+                </div>
               </div>
               <div>
-                <p className="text-text-muted">Ciudad</p>
-                <p className="font-medium">{selected.ciudad || "—"}</p>
+                <div className="text-mute" style={{ marginBottom: 4 }}>
+                  TELÉFONO
+                </div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}>
+                  {selected.telefono || "—"}
+                </div>
               </div>
               <div>
-                <p className="text-text-muted">Teléfono</p>
-                <p className="font-medium">{selected.telefono || "—"}</p>
-              </div>
-              <div>
-                <p className="text-text-muted">Registrado</p>
-                <p className="font-medium">
+                <div className="text-mute" style={{ marginBottom: 4 }}>
+                  REGISTRADO
+                </div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}>
                   {new Date(selected.created_at).toLocaleString("es-ES")}
-                </p>
-              </div>
-            </div>
-
-            <div className="border-t border-border pt-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <label className="text-sm text-text-secondary w-16">Rol</label>
-                <Select
-                  value={selected.rol}
-                  onChange={(e) => updateRol(selected.id, e.target.value as Rol)}
-                  className="w-40"
-                >
-                  <option value="productor">Productor</option>
-                  <option value="venue">Espacio</option>
-                  <option value="artista">Artista</option>
-                  <option value="proveedor">Proveedor</option>
-                  <option value="admin">Admin</option>
-                </Select>
-              </div>
-              <div className="flex items-center gap-3">
-                <label className="text-sm text-text-secondary w-16">Estado</label>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant={selected.estado === "activo" ? "primary" : "secondary"}
-                    onClick={() => updateEstado(selected.id, "activo")}
-                  >
-                    Activo
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={selected.estado === "pendiente" ? "primary" : "secondary"}
-                    onClick={() => updateEstado(selected.id, "pendiente")}
-                  >
-                    Pendiente
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={selected.estado === "bloqueado" ? "primary" : "secondary"}
-                    onClick={() => updateEstado(selected.id, "bloqueado")}
-                  >
-                    Bloqueado
-                  </Button>
                 </div>
               </div>
             </div>
+
+            <hr className="hr" />
+
+            <Field label="Rol">
+              <Select
+                value={selected.rol}
+                onChange={(e) => updateRol(selected.id, e.target.value as Rol)}
+              >
+                <option value="productor">Productor</option>
+                <option value="venue">Espacio</option>
+                <option value="artista">Artista</option>
+                <option value="proveedor">Proveedor</option>
+                <option value="admin">Admin</option>
+              </Select>
+            </Field>
+
+            <Field label="Estado">
+              <div className="segmented">
+                {(["activo", "pendiente", "bloqueado"] as const).map((e) => (
+                  <button
+                    key={e}
+                    type="button"
+                    className={selected.estado === e ? "active" : ""}
+                    onClick={() => updateEstado(selected.id, e)}
+                    data-cursor={`marcar ${e}`}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+            </Field>
           </div>
         )}
       </Modal>
 
-      {/* Modal crear usuario */}
+      {/* Modal crear */}
       <Modal
         open={showCreate}
         onClose={() => {
@@ -259,27 +263,39 @@ export default function AdminUsuariosPage() {
           setCreateError("");
         }}
         title="Crear usuario"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setShowCreate(false)} data-cursor="cancelar">
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleCreateUser}
+              disabled={creating || !newUser.nombre || !newUser.email || !newUser.password}
+              data-cursor="crear →"
+            >
+              {creating ? "Creando…" : "Crear usuario"}
+            </Button>
+          </>
+        }
       >
-        <div className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm text-text-secondary">Nombre</label>
+        <div className="flex-col">
+          <Field label="Nombre">
             <Input
               value={newUser.nombre}
               onChange={(e) => setNewUser({ ...newUser, nombre: e.target.value })}
               placeholder="Nombre completo"
             />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm text-text-secondary">Email</label>
+          </Field>
+          <Field label="Email">
             <Input
               type="email"
               value={newUser.email}
               onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
               placeholder="email@ejemplo.com"
             />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm text-text-secondary">Contraseña</label>
+          </Field>
+          <Field label="Contraseña">
             <Input
               type="password"
               value={newUser.password}
@@ -287,9 +303,8 @@ export default function AdminUsuariosPage() {
               placeholder="Mínimo 6 caracteres"
               minLength={6}
             />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm text-text-secondary">Rol</label>
+          </Field>
+          <Field label="Rol">
             <Select
               value={newUser.rol}
               onChange={(e) => setNewUser({ ...newUser, rol: e.target.value as Rol })}
@@ -300,24 +315,26 @@ export default function AdminUsuariosPage() {
               <option value="artista">Artista</option>
               <option value="proveedor">Proveedor</option>
             </Select>
-          </div>
+          </Field>
 
-          {createError && <p className="text-sm text-error">{createError}</p>}
-
-          <div className="flex gap-3 border-t border-border pt-4">
-            <Button
-              onClick={handleCreateUser}
-              disabled={creating || !newUser.nombre || !newUser.email || !newUser.password}
-              className="flex-1"
+          {createError && (
+            <div
+              style={{
+                padding: 12,
+                background: "rgba(255,59,59,0.08)",
+                color: "var(--color-error)",
+                borderRadius: 4,
+                fontFamily: "var(--font-mono)",
+                fontSize: 12,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
             >
-              {creating ? "Creando..." : "Crear usuario"}
-            </Button>
-            <Button variant="secondary" onClick={() => setShowCreate(false)}>
-              Cancelar
-            </Button>
-          </div>
+              {createError}
+            </div>
+          )}
         </div>
       </Modal>
-    </div>
+    </>
   );
 }

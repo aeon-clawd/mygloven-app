@@ -2,15 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search } from "lucide-react";
+import { PageHead } from "@/components/ui/page-head";
+import { Icon } from "@/components/ui/icon";
 import { createClient } from "@/lib/supabase/client";
 import type { Artista } from "@/types/database";
 
-const estadoBadge: Record<string, "success" | "warning" | "error" | "default"> = {
+const estadoVariant: Record<string, "success" | "warning" | "error" | "default"> = {
   activo: "success",
   borrador: "warning",
   pausado: "default",
@@ -43,64 +43,103 @@ export default function AdminArtistasPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Artistas</h1>
-        <Button onClick={() => router.push("/admin/artistas/nuevo")}>
-          <Plus size={16} /> Crear artista
-        </Button>
-      </div>
+    <>
+      <PageHead
+        eyebrow={`Roster · ${artists.length} artista${artists.length !== 1 ? "s" : ""}`}
+        title="Artistas"
+        sub="DJs, bandas, performers. Filtrables por disciplina, ciudad y rango de precio."
+        actions={
+          <Button
+            variant="primary"
+            onClick={() => router.push("/admin/artistas/nuevo")}
+            data-cursor="crear →"
+          >
+            <Icon.plus /> Nuevo artista
+          </Button>
+        }
+      />
 
-      <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+      <div className="flex-row" style={{ marginBottom: 24, gap: 12 }}>
         <Input
-          placeholder="Buscar por nombre o género..."
+          placeholder="Buscar por nombre o género…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
+          style={{ maxWidth: 360 }}
         />
+        <span className="text-mute" style={{ marginLeft: "auto" }}>
+          {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
+        </span>
       </div>
 
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i} className="h-36 animate-pulse" />
-          ))}
+        <div className="empty">
+          <div className="msg">Cargando…</div>
         </div>
       ) : filtered.length === 0 ? (
-        <Card>
-          <p className="text-text-secondary text-sm">
-            {search ? "No se encontraron artistas." : "No hay artistas registrados aún. Crea el primer artista."}
-          </p>
-        </Card>
+        <div className="empty">
+          <div className="num">0</div>
+          <div className="msg">
+            {search ? "Sin resultados" : "Sin artistas — crea el primero"}
+          </div>
+        </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((artist) => (
-            <Card
-              key={artist.id}
-              className="cursor-pointer hover:border-accent/50 transition-colors"
-              onClick={() => router.push(`/admin/artistas/${artist.id}`)}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="font-semibold">{artist.nombre}</h3>
-                  <p className="text-sm text-text-muted">
-                    {artist.genero_musical || "Sin género"}
-                  </p>
-                </div>
-                <Badge variant={estadoBadge[artist.estado]}>
-                  {artist.estado}
-                </Badge>
-              </div>
-              {artist.descripcion_corta && (
-                <p className="text-sm text-text-secondary line-clamp-2 mb-3">
-                  {artist.descripcion_corta}
-                </p>
-              )}
-            </Card>
-          ))}
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th className="row-num">№</th>
+                <th>Nombre</th>
+                <th>Género</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((a, i) => (
+                <tr
+                  key={a.id}
+                  data-cursor="ver →"
+                  onClick={() => router.push(`/admin/artistas/${a.id}`)}
+                  style={{ cursor: "none" }}
+                >
+                  <td className="row-num">{String(i + 1).padStart(3, "0")}</td>
+                  <td
+                    style={{
+                      fontFamily: "var(--font-display)",
+                      fontSize: 16,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {a.nombre}
+                    {a.descripcion_corta && (
+                      <div
+                        style={{
+                          fontFamily: "var(--font-mono)",
+                          fontSize: 11,
+                          color: "var(--color-text-muted)",
+                          fontWeight: 400,
+                          marginTop: 2,
+                          letterSpacing: "0.04em",
+                          textTransform: "none",
+                        }}
+                      >
+                        {a.descripcion_corta}
+                      </div>
+                    )}
+                  </td>
+                  <td className="text-mute">{a.genero_musical || "—"}</td>
+                  <td>
+                    <Pill variant={estadoVariant[a.estado] || "default"} dot>
+                      {a.estado}
+                    </Pill>
+                  </td>
+                  <td className="cta">Ver →</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
-    </div>
+    </>
   );
 }

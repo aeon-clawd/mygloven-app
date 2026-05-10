@@ -1,10 +1,11 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-import { Logo } from "@/components/layout/logo";
-import { Card } from "@/components/ui/card";
+import { Suspense, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/page-head";
+import { Icon } from "@/components/ui/icon";
+import { Marquee } from "@/components/layout/marquee";
 
 function RegisterForm() {
   const searchParams = useSearchParams();
@@ -16,29 +17,48 @@ function RegisterForm() {
     proveedor: "Proveedor",
   };
 
+  useEffect(() => {
+    document.body.classList.add("scroll-auto");
+    return () => {
+      document.body.classList.remove("scroll-auto");
+    };
+  }, []);
+
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-lg space-y-8">
-        <div className="text-center">
-          <Logo className="mx-auto h-10 mb-6" />
-          <h1 className="text-xl font-semibold">
-            Registro como {roleLabels[role] || "Usuario"}
-          </h1>
-          <p className="mt-2 text-sm text-text-secondary">
-            Completa tu candidatura. Un administrador revisará tu solicitud.
-          </p>
+    <>
+      <Marquee items={["my'G — registro", "Cada candidato pasa por revisión"]} />
+      <div className="auth-stage">
+        <div className="auth-left">
+          <div className="brand">
+            my<span className="ap">&apos;</span>G
+          </div>
+          <div className="display">
+            Únete<span className="ap">.</span>
+          </div>
+          <div className="footer-meta">
+            <span>v2.0 · Industrial</span>
+            <span>Candidatura</span>
+          </div>
         </div>
 
-        <Card>
-          <div className="space-y-4">
-            <p className="text-sm text-text-secondary">
-              Wizard de registro — próximamente
+        <div className="auth-right">
+          <Eyebrow>— Registro como {roleLabels[role] || "usuario"}</Eyebrow>
+          <h2>Tu candidatura.</h2>
+          <p className="sub">Completa los datos. Un admin revisará tu solicitud y te avisará cuando esté aprobada.</p>
+
+          <div className="card raised">
+            <p className="text-mute">— Wizard de registro próximamente</p>
+            <p style={{ fontSize: 14, marginTop: 8, color: "var(--color-text-secondary)" }}>
+              Por ahora, contacta con el equipo my&apos;G para iniciar el alta.
             </p>
-            <Button className="w-full">Enviar candidatura</Button>
           </div>
-        </Card>
+
+          <Button variant="primary" size="lg" full disabled data-cursor="enviar →">
+            Enviar candidatura <Icon.arrow />
+          </Button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

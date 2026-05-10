@@ -1,32 +1,25 @@
-"use client";
-
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import {
-  LayoutDashboard,
-  Building2,
-  Mic2,
-  ClipboardCheck,
-  Users,
-  CalendarDays,
-} from "lucide-react";
 import type { NavItem } from "@/components/layout/sidebar";
 
 const adminNav: NavItem[] = [
-  { label: "Panel", href: "/admin/panel", icon: LayoutDashboard },
-  { label: "Espacios", href: "/admin/espacios", icon: Building2 },
-  { label: "Artistas", href: "/admin/artistas", icon: Mic2 },
-  { label: "Candidaturas", href: "/admin/candidaturas", icon: ClipboardCheck },
-  { label: "Usuarios", href: "/admin/usuarios", icon: Users },
-  { label: "Eventos", href: "/admin/eventos", icon: CalendarDays },
+  { label: "Panel", href: "/admin/panel" },
+  { label: "Candidaturas", href: "/admin/candidaturas" },
+  { label: "Eventos", href: "/admin/eventos" },
+  { label: "Espacios", href: "/admin/espacios" },
+  { label: "Artistas", href: "/admin/artistas" },
+  { label: "Usuarios", href: "/admin/usuarios" },
 ];
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+const adminMarquee = [
+  "my'G — sistema operativo de eventos",
+  "v2.0 — industrial brutalist",
+  "Admin · panel de operaciones",
+  "España · Portugal · Europa",
+];
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <DashboardShell items={adminNav} role="Admin">
+    <DashboardShell items={adminNav} role="Admin" marqueeItems={adminMarquee}>
       {children}
     </DashboardShell>
   );

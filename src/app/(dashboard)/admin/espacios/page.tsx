@@ -2,20 +2,28 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
+import { Pill } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search } from "lucide-react";
+import { PageHead } from "@/components/ui/page-head";
+import { Icon } from "@/components/ui/icon";
 import { createClient } from "@/lib/supabase/client";
-import type { Venue } from "@/types/database";
+import type { Venue, VenueImage } from "@/types/database";
 
-const estadoBadge: Record<string, "success" | "warning" | "error" | "default"> = {
+const estadoVariant: Record<string, "success" | "warning" | "error" | "default"> = {
   activo: "success",
   borrador: "warning",
   pausado: "default",
   eliminado: "error",
 };
+
+function getCover(venue: Venue): string | null {
+  const imgs = (venue.images as VenueImage[] | null) || [];
+  if (imgs.length === 0) return null;
+  const principal = imgs.find((i) => i.tag === "principal");
+  return (principal ?? imgs[0]).url;
+}
 
 export default function AdminEspaciosPage() {
   const router = useRouter();
@@ -43,71 +51,87 @@ export default function AdminEspaciosPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Espacios</h1>
-        <Button onClick={() => router.push("/admin/espacios/nuevo")}>
-          <Plus size={16} /> Crear espacio
-        </Button>
-      </div>
+    <>
+      <PageHead
+        eyebrow={`Inventario de la red · ${venues.length} espacio${venues.length !== 1 ? "s" : ""}`}
+        title="Espacios"
+        sub="Cada espacio en my'G es una propiedad editada — copy real, fotografía cuidada, jerarquía propia."
+        actions={
+          <Button
+            variant="primary"
+            onClick={() => router.push("/admin/espacios/nuevo")}
+            data-cursor="crear →"
+          >
+            <Icon.plus /> Nuevo espacio
+          </Button>
+        }
+      />
 
-      <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+      <div className="flex-row" style={{ marginBottom: 24, gap: 12 }}>
         <Input
-          placeholder="Buscar por nombre o ciudad..."
+          placeholder="Buscar por nombre o ciudad…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
+          style={{ maxWidth: 360 }}
         />
+        <span className="text-mute" style={{ marginLeft: "auto" }}>
+          {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
+        </span>
       </div>
 
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i} className="h-36 animate-pulse" />
-          ))}
+        <div className="empty">
+          <div className="msg">Cargando…</div>
         </div>
       ) : filtered.length === 0 ? (
-        <Card>
-          <p className="text-text-secondary text-sm">
-            {search ? "No se encontraron espacios." : "No hay espacios registrados aún. Crea el primer espacio."}
-          </p>
-        </Card>
+        <div className="empty">
+          <div className="num">0</div>
+          <div className="msg">
+            {search ? "Sin resultados" : "Sin espacios — crea el primero"}
+          </div>
+        </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((venue) => (
-            <Card
-              key={venue.id}
-              className="cursor-pointer hover:border-accent/50 transition-colors"
-              onClick={() => router.push(`/admin/espacios/${venue.id}`)}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="font-semibold">{venue.nombre}</h3>
-                  <p className="text-sm text-text-muted">
-                    {venue.ciudad || "Sin ciudad"}
-                  </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+          {filtered.map((venue, i) => {
+            const cover = getCover(venue);
+            const num = String(i + 1).padStart(3, "0");
+            return (
+              <button
+                type="button"
+                key={venue.id}
+                className="venue-tile"
+                data-cursor="ver →"
+                onClick={() => router.push(`/admin/espacios/${venue.id}`)}
+              >
+                <div className="ph">
+                  {cover && (
+                    <Image src={cover} alt={venue.nombre} fill style={{ objectFit: "cover" }} unoptimized />
+                  )}
+                  <span className="stamp">№ {num}</span>
                 </div>
-                <Badge variant={estadoBadge[venue.estado]}>
-                  {venue.estado}
-                </Badge>
-              </div>
-              {venue.descripcion_corta && (
-                <p className="text-sm text-text-secondary line-clamp-2 mb-3">
-                  {venue.descripcion_corta}
-                </p>
-              )}
-              <div className="flex gap-4 text-xs text-text-muted">
-                {venue.precio_desde && (
-                  <span>
-                    Desde {venue.precio_desde}€/{venue.unidad_precio}
-                  </span>
-                )}
-              </div>
-            </Card>
-          ))}
+                <div className="body">
+                  <div className="head">
+                    <h3>{venue.nombre}</h3>
+                    <Pill variant={estadoVariant[venue.estado] || "default"} dot>
+                      {venue.estado}
+                    </Pill>
+                  </div>
+                  <div className="city">— {venue.ciudad || "Sin ciudad"}</div>
+                  {venue.descripcion_corta && <p className="desc">{venue.descripcion_corta}</p>}
+                  <div className="foot">
+                    <span>{venue.tipo || "—"}</span>
+                    {venue.precio_desde && (
+                      <span className="price">
+                        {venue.precio_desde.toLocaleString("es-ES")}€ / {venue.unidad_precio}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
-    </div>
+    </>
   );
 }

@@ -2,9 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Logo } from "@/components/layout/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
+import { Eyebrow } from "@/components/ui/page-head";
+import { Icon } from "@/components/ui/icon";
+import { Marquee } from "@/components/layout/marquee";
 import { createClient } from "@/lib/supabase/client";
 
 const roleRoutes: Record<string, string> = {
@@ -12,6 +15,12 @@ const roleRoutes: Record<string, string> = {
   productor: "/productor/eventos",
   venue: "/espacio/home",
 };
+
+const authMarquee = [
+  "my'G — sistema operativo de eventos",
+  "v2.0 — industrial brutalist",
+  "Acceso · productor · espacio · artista",
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,6 +30,14 @@ export default function LoginPage() {
   const [nombre, setNombre] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Auth pages need scroll
+  useEffect(() => {
+    document.body.classList.add("scroll-auto");
+    return () => {
+      document.body.classList.remove("scroll-auto");
+    };
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -49,9 +66,7 @@ export default function LoginPage() {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/login`,
-      },
+      options: { redirectTo: `${window.location.origin}/login` },
     });
   }
 
@@ -60,8 +75,10 @@ export default function LoginPage() {
     setError("");
     const supabase = createClient();
 
-    const { data, error: authError } =
-      await supabase.auth.signInWithPassword({ email, password });
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
     if (authError) {
       setError("Email o contraseña incorrectos");
@@ -123,155 +140,160 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (mode === "login") {
-      await handleEmailLogin();
-    } else {
-      await handleEmailRegister();
-    }
+    if (mode === "login") await handleEmailLogin();
+    else await handleEmailRegister();
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <Logo className="mx-auto h-10 mb-6" />
-          <h1 className="text-xl font-semibold">
-            {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
-          </h1>
-          <p className="mt-2 text-sm text-text-secondary">
-            Accede a tu panel de my&apos;G
+    <>
+      <Marquee items={authMarquee} />
+      <div className="auth-stage">
+        <div className="auth-left">
+          <div className="brand">
+            my<span className="ap">&apos;</span>G
+          </div>
+          <div className="display">
+            Operación
+            <br />
+            de eventos<span className="ap">.</span>
+          </div>
+          <div className="footer-meta">
+            <span>v2.0 · Industrial</span>
+            <span>10.05.2026 · MAD</span>
+          </div>
+        </div>
+
+        <div className="auth-right">
+          <Eyebrow>— {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}</Eyebrow>
+          <h2>{mode === "login" ? "Accede al sistema." : "Bienvenido."}</h2>
+          <p className="sub">
+            Tu panel personal según tu rol — productor, espacio, artista o proveedor.
           </p>
-        </div>
-
-        <Button
-          type="button"
-          onClick={handleGoogleLogin}
-          variant="secondary"
-          size="lg"
-          className="w-full"
-        >
-          <svg className="h-5 w-5" viewBox="0 0 24 24">
-            <path
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-              fill="#4285F4"
-            />
-            <path
-              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              fill="#34A853"
-            />
-            <path
-              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-              fill="#FBBC05"
-            />
-            <path
-              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-              fill="#EA4335"
-            />
-          </svg>
-          Continuar con Google
-        </Button>
-
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-border" />
-          <span className="text-xs text-text-muted">o con email</span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === "register" && (
-            <div>
-              <label className="mb-1.5 block text-sm text-text-secondary">
-                Nombre
-              </label>
-              <Input
-                type="text"
-                placeholder="Tu nombre"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                required
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="mb-1.5 block text-sm text-text-secondary">
-              Email
-            </label>
-            <Input
-              type="email"
-              placeholder="tu@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm text-text-secondary">
-              Contraseña
-            </label>
-            <Input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-            />
-          </div>
-
-          {error && <p className="text-sm text-error">{error}</p>}
 
           <Button
-            type="submit"
+            type="button"
+            onClick={handleGoogleLogin}
             size="lg"
-            className="w-full"
-            disabled={loading}
+            full
+            data-cursor="continuar →"
           >
-            {loading
-              ? "Cargando..."
-              : mode === "login"
-                ? "Iniciar sesión"
-                : "Crear cuenta"}
+            <Icon.google /> Continuar con Google
           </Button>
-        </form>
 
-        <div className="text-center text-sm text-text-secondary">
-          {mode === "login" ? (
-            <span>
-              ¿No tienes cuenta?{" "}
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("register");
-                  setError("");
+          <div className="divider">o con email</div>
+
+          <form onSubmit={handleSubmit} className="flex-col">
+            {mode === "register" && (
+              <Field label="Nombre">
+                <Input
+                  type="text"
+                  placeholder="Tu nombre"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  required
+                />
+              </Field>
+            )}
+
+            <Field label="Email">
+              <Input
+                type="email"
+                placeholder="tu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </Field>
+
+            <Field label="Contraseña">
+              <Input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+              />
+            </Field>
+
+            {error && (
+              <div
+                style={{
+                  padding: 10,
+                  background: "rgba(255,59,59,0.08)",
+                  color: "var(--color-error)",
+                  borderRadius: 4,
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 12,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
                 }}
-                className="text-accent hover:text-accent-hover font-medium"
               >
-                Regístrate
-              </button>
-            </span>
-          ) : (
-            <span>
-              ¿Ya tienes cuenta?{" "}
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("login");
-                  setError("");
-                }}
-                className="text-accent hover:text-accent-hover font-medium"
-              >
-                Inicia sesión
-              </button>
-            </span>
-          )}
+                {error}
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              full
+              disabled={loading}
+              data-cursor={mode === "login" ? "entrar →" : "crear →"}
+            >
+              {loading
+                ? "Cargando…"
+                : mode === "login"
+                  ? "Iniciar sesión"
+                  : "Crear cuenta"}
+              <Icon.arrow />
+            </Button>
+          </form>
+
+          <div
+            style={{
+              textAlign: "center",
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              color: "var(--color-text-muted)",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+            }}
+          >
+            {mode === "login" ? (
+              <>
+                ¿No tienes cuenta?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("register");
+                    setError("");
+                  }}
+                  style={{ color: "var(--color-accent)", cursor: "none" }}
+                  data-cursor="registrarse"
+                >
+                  Regístrate
+                </button>
+              </>
+            ) : (
+              <>
+                ¿Ya tienes cuenta?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("login");
+                    setError("");
+                  }}
+                  style={{ color: "var(--color-accent)", cursor: "none" }}
+                  data-cursor="entrar"
+                >
+                  Inicia sesión
+                </button>
+              </>
+            )}
+          </div>
         </div>
-
-        <p className="text-center text-xs text-text-muted">
-          Al continuar, aceptas los términos y condiciones de my&apos;G
-        </p>
       </div>
-    </div>
+    </>
   );
 }

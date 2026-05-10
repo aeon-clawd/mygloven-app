@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Pill } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
+import { PageHead } from "@/components/ui/page-head";
+import { Stat } from "@/components/ui/stat";
 import { createClient } from "@/lib/supabase/client";
 
 interface EventoRow {
@@ -26,13 +27,28 @@ interface SolicitudRow {
   venue: { nombre: string } | null;
 }
 
-const estadoBadge: Record<string, "default" | "success" | "warning" | "error"> = {
-  borrador: "default",
+const estadoVariant: Record<string, "default" | "success" | "warning" | "error"> = {
+  borrador: "warning",
   activo: "success",
   en_propuestas: "warning",
   cerrado: "success",
   cancelado: "error",
 };
+
+const solicitudVariant: Record<string, "default" | "success" | "warning" | "error"> = {
+  pendiente: "warning",
+  aceptada: "success",
+  rechazada: "error",
+  info_solicitada: "default",
+};
+
+const DIAS = ["DOM", "LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB"];
+
+function formatDay(d: string | null): string {
+  if (!d) return "—";
+  const date = new Date(d);
+  return `${DIAS[date.getDay()]} ${String(date.getDate()).padStart(2, "0")}`;
+}
 
 export default function AdminEventosPage() {
   const [eventos, setEventos] = useState<EventoRow[]>([]);
@@ -76,134 +92,154 @@ export default function AdminEventosPage() {
     );
   }
 
-  const solicitudBadge: Record<string, "default" | "success" | "warning" | "error"> = {
-    pendiente: "warning",
-    aceptada: "success",
-    rechazada: "error",
-    info_solicitada: "default",
+  const counts = {
+    activos: eventos.filter((e) => e.estado === "activo").length,
+    propuestas: eventos.filter((e) => e.estado === "en_propuestas").length,
+    borradores: eventos.filter((e) => e.estado === "borrador").length,
+    cerrados: eventos.filter((e) => e.estado === "cerrado").length,
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Eventos</h1>
+    <>
+      <PageHead
+        eyebrow="Cartelera de la red"
+        title="Eventos"
+        sub="Todo lo que se está produciendo, todo lo que se está negociando. Ordenado por fecha."
+      />
+
+      <div className="card-grid cols-4" style={{ marginBottom: 32 }}>
+        <Stat label="Activos" value={loading ? "—" : counts.activos} accent />
+        <Stat label="En propuestas" value={loading ? "—" : counts.propuestas} />
+        <Stat label="Borradores" value={loading ? "—" : counts.borradores} />
+        <Stat label="Cerrados" value={loading ? "—" : counts.cerrados} />
+      </div>
 
       {loading ? (
-        <Card className="animate-pulse h-32" />
+        <div className="empty">
+          <div className="msg">Cargando…</div>
+        </div>
       ) : eventos.length === 0 ? (
-        <Card>
-          <p className="text-text-secondary text-sm">No hay eventos creados aún.</p>
-        </Card>
+        <div className="empty">
+          <div className="num">0</div>
+          <div className="msg">Sin eventos creados</div>
+        </div>
       ) : (
-        <Card className="p-0 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-text-muted">
-                <th className="px-6 py-3 font-medium">Evento</th>
-                <th className="px-6 py-3 font-medium">Productor</th>
-                <th className="px-6 py-3 font-medium">Tipo</th>
-                <th className="px-6 py-3 font-medium">Ciudad</th>
-                <th className="px-6 py-3 font-medium">Fecha</th>
-                <th className="px-6 py-3 font-medium">Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {eventos.map((evento) => (
-                <tr
-                  key={evento.id}
-                  className="border-b border-border last:border-0 hover:bg-surface-hover transition-colors cursor-pointer"
-                  onClick={() => openDetail(evento)}
-                >
-                  <td className="px-6 py-3 font-medium">{evento.titulo}</td>
-                  <td className="px-6 py-3 text-text-secondary">
-                    {evento.productor?.nombre || "—"}
-                  </td>
-                  <td className="px-6 py-3 text-text-secondary">{evento.tipo || "—"}</td>
-                  <td className="px-6 py-3 text-text-secondary">{evento.ciudad || "—"}</td>
-                  <td className="px-6 py-3 text-text-muted">
-                    {evento.fecha_deseada
-                      ? new Date(evento.fecha_deseada).toLocaleDateString("es-ES")
-                      : "—"}
-                  </td>
-                  <td className="px-6 py-3">
-                    <Badge variant={estadoBadge[evento.estado]}>{evento.estado}</Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+        <div className="lineup">
+          {eventos.map((e) => (
+            <div
+              key={e.id}
+              className="row"
+              data-cursor="abrir →"
+              onClick={() => openDetail(e)}
+              style={{ cursor: "none" }}
+            >
+              <span className="day">{formatDay(e.fecha_deseada)}</span>
+              <span className="time">
+                {e.fecha_deseada
+                  ? new Date(e.fecha_deseada).toLocaleDateString("es-ES", {
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : "—"}
+              </span>
+              <div>
+                <div className="ttl">{e.titulo}</div>
+                <div className="sub">
+                  {[e.ciudad, e.num_personas ? `${e.num_personas} pax` : null, e.tipo]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </div>
+              </div>
+              <Pill variant={estadoVariant[e.estado] || "default"} dot>
+                {e.estado}
+              </Pill>
+              <span className="text-mute">{e.productor?.nombre || "—"}</span>
+              <span className="cta">Abrir →</span>
+            </div>
+          ))}
+        </div>
       )}
 
       <Modal
         open={!!selected}
         onClose={() => setSelected(null)}
-        title="Detalle del evento"
-        size="lg"
+        title={selected?.titulo || "Detalle del evento"}
       >
         {selected && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="flex-col">
+            <div className="card-grid cols-2" style={{ borderRadius: 4 }}>
               <div>
-                <p className="text-text-muted">Título</p>
-                <p className="font-medium">{selected.titulo}</p>
-              </div>
-              <div>
-                <p className="text-text-muted">Productor</p>
-                <p className="font-medium">{selected.productor?.nombre}</p>
-                <p className="text-xs text-text-muted">{selected.productor?.email}</p>
-              </div>
-              <div>
-                <p className="text-text-muted">Tipo</p>
-                <p className="font-medium">{selected.tipo || "—"}</p>
-              </div>
-              <div>
-                <p className="text-text-muted">Ciudad</p>
-                <p className="font-medium">{selected.ciudad || "—"}</p>
-              </div>
-              <div>
-                <p className="text-text-muted">Fecha deseada</p>
-                <p className="font-medium">
+                <div className="text-mute" style={{ marginBottom: 4 }}>
+                  FECHA
+                </div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600 }}>
                   {selected.fecha_deseada
                     ? new Date(selected.fecha_deseada).toLocaleDateString("es-ES")
                     : "—"}
-                </p>
+                </div>
               </div>
               <div>
-                <p className="text-text-muted">Personas</p>
-                <p className="font-medium">{selected.num_personas || "—"}</p>
+                <div className="text-mute" style={{ marginBottom: 4 }}>
+                  PRODUCTOR
+                </div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600 }}>
+                  {selected.productor?.nombre || "—"}
+                  {selected.productor?.email && (
+                    <span
+                      style={{
+                        display: "block",
+                        fontSize: 12,
+                        color: "var(--color-text-muted)",
+                        fontFamily: "var(--font-mono)",
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        marginTop: 4,
+                      }}
+                    >
+                      {selected.productor.email}
+                    </span>
+                  )}
+                </div>
               </div>
               <div>
-                <p className="text-text-muted">Presupuesto</p>
-                <p className="font-medium">
-                  {selected.presupuesto ? `${selected.presupuesto}€` : "—"}
-                </p>
+                <div className="text-mute" style={{ marginBottom: 4 }}>
+                  TIPO · CIUDAD
+                </div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600 }}>
+                  {[selected.tipo, selected.ciudad].filter(Boolean).join(" · ") || "—"}
+                </div>
               </div>
               <div>
-                <p className="text-text-muted">Estado</p>
-                <Badge variant={estadoBadge[selected.estado]}>{selected.estado}</Badge>
+                <div className="text-mute" style={{ marginBottom: 4 }}>
+                  PAX · PRESUPUESTO
+                </div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600 }}>
+                  {selected.num_personas || "—"}
+                  {selected.presupuesto ? ` · ${selected.presupuesto.toLocaleString()}€` : ""}
+                </div>
               </div>
             </div>
-
-            <div className="border-t border-border pt-4">
-              <h3 className="text-sm font-semibold mb-3">
-                Solicitudes ({solicitudes.length})
-              </h3>
+            <hr className="hr" />
+            <div>
+              <div className="text-mute" style={{ marginBottom: 12 }}>
+                SOLICITUDES A ESPACIOS · {solicitudes.length}
+              </div>
               {solicitudes.length === 0 ? (
-                <p className="text-sm text-text-muted">Sin solicitudes a espacios</p>
+                <div className="text-mute">Sin solicitudes a espacios</div>
               ) : (
-                <div className="space-y-2">
+                <div className="flex-col" style={{ gap: 8 }}>
                   {solicitudes.map((s) => (
                     <div
                       key={s.id}
-                      className="flex items-center justify-between rounded-lg border border-border p-3"
+                      className="card raised flex-row between"
+                      style={{ padding: 14 }}
                     >
-                      <span className="text-sm font-medium">{s.venue?.nombre || "—"}</span>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={solicitudBadge[s.estado]}>{s.estado}</Badge>
-                        <span className="text-xs text-text-muted">
-                          {new Date(s.created_at).toLocaleDateString("es-ES")}
-                        </span>
-                      </div>
+                      <span style={{ fontFamily: "var(--font-display)", fontSize: 16 }}>
+                        {s.venue?.nombre || "—"}
+                      </span>
+                      <Pill variant={solicitudVariant[s.estado] || "default"} dot>
+                        {s.estado}
+                      </Pill>
                     </div>
                   ))}
                 </div>
@@ -212,6 +248,6 @@ export default function AdminEventosPage() {
           </div>
         )}
       </Modal>
-    </div>
+    </>
   );
 }

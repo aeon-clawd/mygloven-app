@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useState, useCallback } from "react";
+import { Pill } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, X, ExternalLink } from "lucide-react";
+import { Field } from "@/components/ui/field";
+import { PageHead } from "@/components/ui/page-head";
+import { Icon } from "@/components/ui/icon";
 import { createClient } from "@/lib/supabase/client";
 
 interface CandidaturaRow {
@@ -26,7 +27,7 @@ const rolLabels: Record<string, string> = {
   proveedor: "Proveedor",
 };
 
-const estadoBadge: Record<string, "warning" | "success" | "error"> = {
+const estadoVariant: Record<string, "warning" | "success" | "error"> = {
   pendiente: "warning",
   aprobada: "success",
   rechazada: "error",
@@ -39,7 +40,7 @@ export default function AdminCandidaturasPage() {
   const [selected, setSelected] = useState<CandidaturaRow | null>(null);
   const [notas, setNotas] = useState("");
 
-  async function loadCandidaturas() {
+  const loadCandidaturas = useCallback(async () => {
     const supabase = createClient();
     let query = supabase
       .from("candidaturas")
@@ -58,22 +59,27 @@ export default function AdminCandidaturasPage() {
       })) as CandidaturaRow[]
     );
     setLoading(false);
-  }
+  }, [filtro]);
 
   useEffect(() => {
     setLoading(true);
     loadCandidaturas();
-  }, [filtro]);
+  }, [loadCandidaturas]);
 
   async function handleDecision(id: string, estado: "aprobada" | "rechazada") {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    await supabase.from("candidaturas").update({
-      estado,
-      notas_admin: notas || null,
-      revisado_por: user?.id,
-    }).eq("id", id);
+    await supabase
+      .from("candidaturas")
+      .update({
+        estado,
+        notas_admin: notas || null,
+        revisado_por: user?.id,
+      })
+      .eq("id", id);
 
     if (estado === "aprobada" && selected) {
       await supabase.from("profiles").update({ estado: "activo" }).eq("id", selected.usuario_id);
@@ -84,101 +90,185 @@ export default function AdminCandidaturasPage() {
     loadCandidaturas();
   }
 
+  const filterCount = candidaturas.length;
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Candidaturas</h1>
-        <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
+    <>
+      <PageHead
+        eyebrow="Quién entra al sistema"
+        title="Candidaturas"
+        sub="Cada espacio, artista y proveedor pasa por aquí antes de entrar a la red. Decide en tres clics."
+      />
+
+      <div className="flex-row between" style={{ marginBottom: 24 }}>
+        <div className="segmented">
           {["pendiente", "aprobada", "rechazada", "todas"].map((f) => (
             <button
               key={f}
+              type="button"
+              className={filtro === f ? "active" : ""}
               onClick={() => setFiltro(f)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                filtro === f
-                  ? "bg-accent text-white"
-                  : "text-text-secondary hover:text-text-primary"
-              }`}
+              data-cursor="filtrar"
             >
-              {f === "todas" ? "Todas" : f.charAt(0).toUpperCase() + f.slice(1) + "s"}
+              {f === "todas" ? "Todas" : f}
             </button>
           ))}
         </div>
+        <span className="text-mute">
+          {filterCount} resultado{filterCount !== 1 ? "s" : ""}
+        </span>
       </div>
 
       {loading ? (
-        <Card className="animate-pulse h-32" />
+        <div className="empty">
+          <div className="msg">Cargando…</div>
+        </div>
       ) : candidaturas.length === 0 ? (
-        <Card>
-          <p className="text-text-secondary text-sm">
-            No hay candidaturas {filtro !== "todas" ? filtro + "s" : ""}.
-          </p>
-        </Card>
+        <div className="empty">
+          <div className="num">0</div>
+          <div className="msg">Sin candidaturas {filtro !== "todas" ? `${filtro}s` : ""}</div>
+        </div>
       ) : (
-        <div className="space-y-3">
-          {candidaturas.map((c) => (
-            <Card
-              key={c.id}
-              className="flex items-center justify-between cursor-pointer hover:border-accent/50 transition-colors"
-              onClick={() => {
-                setSelected(c);
-                setNotas(c.notas_admin || "");
-              }}
-            >
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center text-accent text-sm font-bold">
-                  {c.usuario?.nombre?.[0]?.toUpperCase() || "?"}
-                </div>
-                <div>
-                  <p className="font-medium">{c.usuario?.nombre || "Sin nombre"}</p>
-                  <p className="text-sm text-text-muted">{c.usuario?.email}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Badge>{rolLabels[c.rol]}</Badge>
-                <Badge variant={estadoBadge[c.estado]}>{c.estado}</Badge>
-                <span className="text-xs text-text-muted">
-                  {new Date(c.created_at).toLocaleDateString("es-ES")}
-                </span>
-              </div>
-            </Card>
-          ))}
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th className="row-num">№</th>
+                <th>Solicitante</th>
+                <th>Rol</th>
+                <th>Ciudad</th>
+                <th>Estado</th>
+                <th>Recibida</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {candidaturas.map((c, i) => (
+                <tr
+                  key={c.id}
+                  data-cursor="abrir →"
+                  onClick={() => {
+                    setSelected(c);
+                    setNotas(c.notas_admin || "");
+                  }}
+                  style={{ cursor: "none" }}
+                >
+                  <td className="row-num">{String(i + 1).padStart(3, "0")}</td>
+                  <td>
+                    <div>{c.usuario?.nombre || "Sin nombre"}</div>
+                    <div
+                      style={{
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 11,
+                        color: "var(--color-text-muted)",
+                        marginTop: 2,
+                      }}
+                    >
+                      {c.usuario?.email}
+                    </div>
+                  </td>
+                  <td>
+                    <Pill>{rolLabels[c.rol] || c.rol}</Pill>
+                  </td>
+                  <td className="text-mute">{c.usuario?.ciudad || "—"}</td>
+                  <td>
+                    <Pill variant={estadoVariant[c.estado] || "default"} dot>
+                      {c.estado}
+                    </Pill>
+                  </td>
+                  <td className="text-mute">
+                    {new Date(c.created_at).toLocaleDateString("es-ES")}
+                  </td>
+                  <td className="cta">Abrir →</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
       <Modal
         open={!!selected}
-        onClose={() => { setSelected(null); setNotas(""); }}
-        title="Revisar candidatura"
-        size="lg"
+        onClose={() => {
+          setSelected(null);
+          setNotas("");
+        }}
+        title={selected?.usuario?.nombre || "Candidatura"}
+        footer={
+          selected?.estado === "pendiente" && (
+            <>
+              <Button
+                variant="danger"
+                onClick={() => handleDecision(selected.id, "rechazada")}
+                data-cursor="rechazar"
+              >
+                <Icon.x /> Rechazar
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => handleDecision(selected.id, "aprobada")}
+                data-cursor="aprobar"
+              >
+                <Icon.check /> Aprobar
+              </Button>
+            </>
+          )
+        }
       >
         {selected && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="flex-col">
+            <div className="card-grid cols-2" style={{ borderRadius: 4 }}>
               <div>
-                <p className="text-text-muted">Nombre</p>
-                <p className="font-medium">{selected.usuario?.nombre}</p>
+                <div className="text-mute" style={{ marginBottom: 4 }}>
+                  NOMBRE
+                </div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600 }}>
+                  {selected.usuario?.nombre}
+                </div>
               </div>
               <div>
-                <p className="text-text-muted">Email</p>
-                <p className="font-medium">{selected.usuario?.email}</p>
+                <div className="text-mute" style={{ marginBottom: 4 }}>
+                  EMAIL
+                </div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}>
+                  {selected.usuario?.email}
+                </div>
               </div>
               <div>
-                <p className="text-text-muted">Rol solicitado</p>
-                <Badge>{rolLabels[selected.rol]}</Badge>
+                <div className="text-mute" style={{ marginBottom: 4 }}>
+                  ROL SOLICITADO
+                </div>
+                <Pill>{rolLabels[selected.rol]}</Pill>
               </div>
               <div>
-                <p className="text-text-muted">Ciudad</p>
-                <p className="font-medium">{selected.usuario?.ciudad || "—"}</p>
+                <div className="text-mute" style={{ marginBottom: 4 }}>
+                  CIUDAD
+                </div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600 }}>
+                  {selected.usuario?.ciudad || "—"}
+                </div>
               </div>
             </div>
 
             {selected.datos && Object.keys(selected.datos).length > 0 && (
               <div>
-                <p className="text-sm text-text-muted mb-2">Datos del formulario</p>
-                <div className="rounded-lg bg-background p-4 text-sm space-y-1">
+                <div className="text-mute" style={{ marginBottom: 8 }}>
+                  DATOS DEL FORMULARIO
+                </div>
+                <div className="card raised" style={{ fontSize: 13 }}>
                   {Object.entries(selected.datos).map(([key, value]) => (
-                    <div key={key} className="flex gap-2">
-                      <span className="text-text-muted">{key}:</span>
+                    <div
+                      key={key}
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "120px 1fr",
+                        gap: 12,
+                        padding: "6px 0",
+                      }}
+                    >
+                      <span className="text-mute" style={{ textTransform: "uppercase" }}>
+                        {key}
+                      </span>
                       <span>{String(value ?? "")}</span>
                     </div>
                   ))}
@@ -191,62 +281,57 @@ export default function AdminCandidaturasPage() {
               const ig = selected.datos?.instagram as string | undefined;
               if (!web && !ig) return null;
               return (
-              <div className="flex gap-3">
-                {web && (
-                  <a
-                    href={web}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-sm text-accent hover:text-accent-hover"
-                  >
-                    <ExternalLink size={14} /> Web
-                  </a>
-                )}
-                {ig && (
-                  <a
-                    href={`https://instagram.com/${ig.replace("@", "")}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-sm text-accent hover:text-accent-hover"
-                  >
-                    <ExternalLink size={14} /> Instagram
-                  </a>
-                )}
-              </div>
+                <div className="flex-row" style={{ paddingTop: 8, gap: 16 }}>
+                  {web && (
+                    <a
+                      href={web}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-cursor="web ↗"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 12,
+                        color: "var(--color-accent)",
+                      }}
+                    >
+                      <Icon.ext /> {web}
+                    </a>
+                  )}
+                  {ig && (
+                    <a
+                      href={`https://instagram.com/${ig.replace("@", "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-cursor="instagram ↗"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 12,
+                        color: "var(--color-accent)",
+                      }}
+                    >
+                      <Icon.ext /> @{ig.replace("@", "")}
+                    </a>
+                  )}
+                </div>
               );
             })()}
 
-            <div>
-              <label className="mb-1.5 block text-sm text-text-secondary">
-                Notas del admin
-              </label>
+            <Field label="Notas internas">
               <Textarea
                 value={notas}
                 onChange={(e) => setNotas(e.target.value)}
-                placeholder="Notas internas sobre esta candidatura..."
+                placeholder="Notas para el equipo…"
               />
-            </div>
-
-            {selected.estado === "pendiente" && (
-              <div className="flex gap-3 border-t border-border pt-4">
-                <Button
-                  onClick={() => handleDecision(selected.id, "aprobada")}
-                  className="flex-1"
-                >
-                  <Check size={16} /> Aprobar
-                </Button>
-                <Button
-                  variant="danger"
-                  onClick={() => handleDecision(selected.id, "rechazada")}
-                  className="flex-1"
-                >
-                  <X size={16} /> Rechazar
-                </Button>
-              </div>
-            )}
+            </Field>
           </div>
         )}
       </Modal>
-    </div>
+    </>
   );
 }

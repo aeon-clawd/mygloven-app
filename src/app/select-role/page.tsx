@@ -1,70 +1,99 @@
+"use client";
+
 import Link from "next/link";
-import { Logo } from "@/components/layout/logo";
-import { Music, Building2, Mic2, Truck } from "lucide-react";
+import { useEffect } from "react";
+import { Eyebrow } from "@/components/ui/page-head";
+import { Icon } from "@/components/ui/icon";
+import { Marquee } from "@/components/layout/marquee";
 
 const roles = [
   {
     id: "productor",
-    label: "Soy Productor",
-    description: "Organizo eventos y busco espacios, artistas y proveedores",
-    icon: Music,
+    num: "01",
+    title: "Productor",
+    desc: "Organizo eventos y busco espacios, artistas y proveedores.",
     href: "/login?role=productor",
   },
   {
     id: "venue",
-    label: "Soy Espacio",
-    description: "Tengo un local y quiero recibir solicitudes de eventos",
-    icon: Building2,
+    num: "02",
+    title: "Espacio",
+    desc: "Tengo un local y quiero recibir solicitudes de eventos.",
     href: "/login?role=venue",
   },
   {
     id: "artista",
-    label: "Soy Artista",
-    description: "Quiero que productores me encuentren para sus eventos",
-    icon: Mic2,
+    num: "03",
+    title: "Artista",
+    desc: "Quiero que productores me encuentren para sus eventos.",
     href: "/login?role=artista",
   },
   {
     id: "proveedor",
-    label: "Soy Proveedor",
-    description: "Ofrezco servicios para producción de eventos",
-    icon: Truck,
+    num: "04",
+    title: "Proveedor",
+    desc: "Ofrezco servicios para producción de eventos.",
     href: "/login?role=proveedor",
   },
 ];
 
-export default function SelectRolePage() {
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4">
-      <div className="mb-12 text-center">
-        <Logo className="mx-auto h-10 mb-4" />
-        <p className="text-text-secondary text-lg">
-          Tu sistema operativo para producción de eventos
-        </p>
-      </div>
+const rolesMarquee = [
+  "my'G — sistema operativo de eventos",
+  "Cuatro entradas, un sistema",
+  "Productor · Espacio · Artista · Proveedor",
+];
 
-      <div className="grid w-full max-w-3xl gap-4 sm:grid-cols-2">
-        {roles.map((role) => {
-          const Icon = role.icon;
-          return (
+export default function SelectRolePage() {
+  useEffect(() => {
+    document.body.classList.add("scroll-auto");
+    return () => {
+      document.body.classList.remove("scroll-auto");
+    };
+  }, []);
+
+  return (
+    <>
+      <Marquee items={rolesMarquee} />
+      <div className="roles-stage">
+        <div className="head">
+          <div>
+            <Eyebrow>— Cómo entras al sistema</Eyebrow>
+            <h1>
+              ¿Qué eres,
+              <br />
+              esta vez<span className="ap">?</span>
+            </h1>
+          </div>
+          <div className="text-mute" style={{ textAlign: "right" }}>
+            Selecciona un rol
+            <br />
+            Cuatro entradas, un sistema
+          </div>
+        </div>
+
+        <div className="roles-grid">
+          {roles.map((r) => (
             <Link
-              key={role.id}
-              href={role.href}
-              className="group flex flex-col gap-3 rounded-xl border border-border bg-surface p-6 transition-all hover:border-accent hover:bg-surface-hover"
+              key={r.id}
+              href={r.href}
+              className="role-card"
+              data-cursor="entrar →"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-white">
-                <Icon size={24} />
-              </div>
+              <div className="num">— {r.num} / 04</div>
               <div>
-                <h3 className="font-semibold text-text-primary">{role.label}</h3>
-                <p className="mt-1 text-sm text-text-secondary">
-                  {role.description}
-                </p>
+                <div className="title">
+                  {r.title}
+                  <span className="ap">.</span>
+                </div>
+                <p className="desc">{r.desc}</p>
+              </div>
+              <div className="arrow">
+                Entrar <Icon.arrow />
               </div>
             </Link>
-          );
-        })}
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

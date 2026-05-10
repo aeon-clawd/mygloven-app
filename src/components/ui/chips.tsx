@@ -1,7 +1,5 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-
 interface ChipOption {
   value: string;
   label: string;
@@ -28,7 +26,7 @@ export function Chips({ options, selected, onChange, multiple = true }: ChipsPro
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
       {options.map((opt) => {
         const isSelected = selected.includes(opt.value);
         return (
@@ -36,12 +34,14 @@ export function Chips({ options, selected, onChange, multiple = true }: ChipsPro
             key={opt.value}
             type="button"
             onClick={() => toggle(opt.value)}
-            className={cn(
-              "rounded-full px-4 py-1.5 text-sm font-medium transition-colors border",
-              isSelected
-                ? "bg-success/15 text-success border-success/30"
-                : "bg-surface text-text-secondary border-border hover:border-text-muted"
-            )}
+            data-cursor="seleccionar"
+            className={`pill${isSelected ? " accent" : ""}`}
+            style={{
+              cursor: "none",
+              fontSize: 11,
+              padding: "7px 12px",
+              letterSpacing: "0.18em",
+            }}
           >
             {opt.label}
           </button>

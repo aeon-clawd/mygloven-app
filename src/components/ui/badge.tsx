@@ -1,28 +1,30 @@
 import { cn } from "@/lib/utils";
 import { type HTMLAttributes } from "react";
 
-type BadgeVariant = "default" | "success" | "warning" | "error";
+export type PillVariant = "default" | "success" | "warning" | "error" | "accent";
 
-const variantStyles: Record<BadgeVariant, string> = {
-  default: "bg-accent/10 text-accent",
-  success: "bg-success/10 text-success",
-  warning: "bg-warning/10 text-warning",
-  error: "bg-error/10 text-error",
-};
-
-interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: BadgeVariant;
+interface PillProps extends HTMLAttributes<HTMLSpanElement> {
+  variant?: PillVariant;
+  dot?: boolean;
 }
 
-export function Badge({ className, variant = "default", ...props }: BadgeProps) {
+export function Pill({
+  className,
+  variant = "default",
+  dot,
+  children,
+  ...props
+}: PillProps) {
   return (
     <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-        variantStyles[variant],
-        className
-      )}
+      className={cn("pill", variant !== "default" && variant, className)}
       {...props}
-    />
+    >
+      {dot && <span className="dot" />}
+      {children}
+    </span>
   );
 }
+
+/* Backwards-compat alias */
+export const Badge = Pill;

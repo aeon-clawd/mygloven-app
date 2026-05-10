@@ -1,24 +1,27 @@
-import { Card } from "@/components/ui/card";
+import { Stat } from "@/components/ui/stat";
+import { PageHead } from "@/components/ui/page-head";
 
 export default function EspacioHomePage() {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Bienvenido a tu espacio</h1>
+    <>
+      <PageHead
+        eyebrow="Tu espacio"
+        title="Buenos días"
+        sub="Resumen de actividad. Solicitudes nuevas, reservas confirmadas, ocupación del mes."
+      />
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <p className="text-sm text-text-secondary">Eventos este mes</p>
-          <p className="text-2xl font-bold mt-1">0</p>
-        </Card>
-        <Card>
-          <p className="text-sm text-text-secondary">Próximo evento</p>
-          <p className="text-sm font-medium text-text-muted mt-1">Sin eventos programados</p>
-        </Card>
-        <Card>
-          <p className="text-sm text-text-secondary">Estado del perfil</p>
-          <p className="text-sm font-medium text-warning mt-1">Pendiente de completar</p>
-        </Card>
+      <div className="card-grid cols-4" style={{ marginBottom: 32 }}>
+        <Stat label="Solicitudes nuevas" value="0" accent delta="hoy" deltaDir="up" />
+        <Stat label="Reservas activas" value="0" delta="próximos 60 días" deltaDir="flat" />
+        <Stat label="Ocupación" value="—" delta="vs. mes anterior" deltaDir="flat" />
+        <Stat label="Estado del perfil" value="—" delta="completar para activar" deltaDir="flat" />
       </div>
-    </div>
+
+      <div className="empty">
+        <div className="num">0</div>
+        <div className="msg">Sin actividad reciente</div>
+        <span className="text-mute">Cuando llegue una solicitud, aparecerá aquí.</span>
+      </div>
+    </>
   );
 }
