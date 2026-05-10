@@ -89,6 +89,26 @@ export interface VenueImage {
   order: number;
 }
 
+export interface EventoBrief {
+  tipo?: string | null;
+  ciudad?: string | null;
+  fecha?: string | null;
+  personas?: number | null;
+  presupuesto?: number | null;
+  atmosfera?: string | null;
+  espacio?: string | null;
+  catering?: string | null;
+  musica?: string | null;
+  [key: string]: unknown;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant" | "system" | "tool";
+  content: string;
+  /** ISO timestamp when persisted */
+  ts?: string;
+}
+
 export interface Evento {
   id: string;
   cliente_id: string;
@@ -100,6 +120,8 @@ export interface Evento {
   num_personas: number | null;
   presupuesto: number | null;
   estado: EstadoEvento;
+  brief: EventoBrief;
+  messages: ChatMessage[];
   created_at: string;
   updated_at: string;
 }
