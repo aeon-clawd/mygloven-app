@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { CustomCursor } from "@/components/layout/custom-cursor";
 import { AccentBoot } from "@/components/layout/accent-boot";
+import { ThemeBoot } from "@/components/layout/theme-boot";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -46,6 +47,7 @@ export default function RootLayout({
       className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}
     >
       <body className="antialiased">
+        <ThemeBoot />
         <AccentBoot />
         <CustomCursor />
         {children}

@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { AccentPicker } from "./accent-picker";
+import { ThemeToggle } from "./theme-toggle";
 
 export function Topbar() {
   const pathname = usePathname();
@@ -19,6 +20,7 @@ export function Topbar() {
         ))}
       </div>
       <div className="actions">
+        <ThemeToggle />
         <AccentPicker />
         <span className="live-tag">
           <span className="dot" /> en vivo
