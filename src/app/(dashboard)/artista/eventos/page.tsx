@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Pill } from "@/components/ui/badge";
+import { eventoLabel } from "@/lib/estado-labels";
 import { PageHead } from "@/components/ui/page-head";
 import { Stat } from "@/components/ui/stat";
 import { createClient } from "@/lib/supabase/client";
@@ -137,7 +138,7 @@ export default function ArtistaEventosPage() {
                 </div>
               </div>
               <Pill variant={eventoEstadoVariant[r.evento_estado] || "default"} dot>
-                {r.evento_estado}
+                {eventoLabel(r.evento_estado)}
               </Pill>
               <span className="text-mute">{r.productor_nombre || "—"}</span>
             </div>

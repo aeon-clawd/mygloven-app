@@ -4,6 +4,7 @@ import type { NavItem } from "@/components/layout/sidebar";
 const artistaNav: NavItem[] = [
   { label: "Mis eventos", href: "/artista/eventos" },
   { label: "Solicitudes", href: "/artista/solicitudes" },
+  { label: "Calendario", href: "/artista/calendario" },
 ];
 
 const artistaMarquee = [

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageHead } from "@/components/ui/page-head";
 import { Stat } from "@/components/ui/stat";
+import { EventoDetailModal } from "@/components/productor/evento-detail-modal";
 import { createClient } from "@/lib/supabase/client";
 import type { EstadoEvento } from "@/types/database";
 
@@ -61,6 +62,7 @@ export default function ProductorCalendarioPage() {
   const [month, setMonth] = useState(today.getMonth());
   const [eventos, setEventos] = useState<EventoCal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [detail, setDetail] = useState<EventoCal | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -192,11 +194,9 @@ export default function ProductorCalendarioPage() {
                     title={`${e.titulo} · ${e.estado}`}
                     data-cursor="abrir →"
                     onClick={() =>
-                      router.push(
-                        e.estado === "borrador"
-                          ? `/productor/canvas/${e.id}`
-                          : `/productor/eventos`
-                      )
+                      e.estado === "borrador"
+                        ? router.push(`/productor/canvas/${e.id}`)
+                        : setDetail(e)
                     }
                   >
                     {e.titulo || "Evento sin título"}
@@ -207,6 +207,11 @@ export default function ProductorCalendarioPage() {
           })}
         </div>
       </div>
+
+      <EventoDetailModal
+        evento={detail ? { id: detail.id, titulo: detail.titulo, estado: detail.estado } : null}
+        onClose={() => setDetail(null)}
+      />
     </>
   );
 }

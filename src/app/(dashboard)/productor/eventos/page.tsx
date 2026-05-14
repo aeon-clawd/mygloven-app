@@ -9,7 +9,9 @@ import { PageHead } from "@/components/ui/page-head";
 import { Icon } from "@/components/ui/icon";
 import { Pill } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
+import { EventoDetailModal } from "@/components/productor/evento-detail-modal";
 import { createClient } from "@/lib/supabase/client";
+import { eventoLabel } from "@/lib/estado-labels";
 import type { EstadoEvento } from "@/types/database";
 
 interface EventoRow {
@@ -44,32 +46,6 @@ function formatMonth(d: string | null): string {
   return new Date(d).toLocaleDateString("es-ES", { month: "short", year: "numeric" });
 }
 
-interface VenueSolicitudDetail {
-  id: string;
-  estado: string;
-  respuesta_espacio: string | null;
-  venue_nombre: string;
-  annex_nombre: string | null;
-}
-
-interface ArtistaSolicitudDetail {
-  id: string;
-  estado: string;
-  respuesta_artista: string | null;
-  artista_nombre: string;
-}
-
-function unwrap<T>(rel: T | T[] | null | undefined): T | null {
-  if (!rel) return null;
-  return Array.isArray(rel) ? rel[0] ?? null : rel;
-}
-
-const respVariant: Record<string, "default" | "success" | "warning" | "error"> = {
-  pendiente: "warning",
-  aceptada: "success",
-  rechazada: "error",
-  info_solicitada: "default",
-};
 
 export default function ProductorEventosPage() {
   const router = useRouter();
@@ -78,62 +54,6 @@ export default function ProductorEventosPage() {
   const [toDelete, setToDelete] = useState<EventoRow | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [detail, setDetail] = useState<EventoRow | null>(null);
-  const [venueSols, setVenueSols] = useState<VenueSolicitudDetail[]>([]);
-  const [artistaSols, setArtistaSols] = useState<ArtistaSolicitudDetail[]>([]);
-  const [loadingDetail, setLoadingDetail] = useState(false);
-
-  async function openDetail(ev: EventoRow) {
-    setDetail(ev);
-    setLoadingDetail(true);
-    setVenueSols([]);
-    setArtistaSols([]);
-    const supabase = createClient();
-    const [venueRes, artRes] = await Promise.all([
-      supabase
-        .from("solicitudes")
-        .select(
-          "id, estado, respuesta_espacio, venue:venues!solicitudes_venue_id_fkey(nombre), annex:venue_annexes!solicitudes_venue_annex_id_fkey(nombre)"
-        )
-        .eq("evento_id", ev.id)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("solicitudes_artistas")
-        .select(
-          "id, estado, respuesta_artista, artista:artistas!solicitudes_artistas_artista_id_fkey(nombre)"
-        )
-        .eq("evento_id", ev.id)
-        .order("created_at", { ascending: false }),
-    ]);
-    setVenueSols(
-      ((venueRes.data ?? []) as Array<{
-        id: string;
-        estado: string;
-        respuesta_espacio: string | null;
-        venue: { nombre: string } | { nombre: string }[] | null;
-        annex: { nombre: string } | { nombre: string }[] | null;
-      }>).map((s) => ({
-        id: s.id,
-        estado: s.estado,
-        respuesta_espacio: s.respuesta_espacio,
-        venue_nombre: unwrap(s.venue)?.nombre ?? "—",
-        annex_nombre: unwrap(s.annex)?.nombre ?? null,
-      }))
-    );
-    setArtistaSols(
-      ((artRes.data ?? []) as Array<{
-        id: string;
-        estado: string;
-        respuesta_artista: string | null;
-        artista: { nombre: string } | { nombre: string }[] | null;
-      }>).map((s) => ({
-        id: s.id,
-        estado: s.estado,
-        respuesta_artista: s.respuesta_artista,
-        artista_nombre: unwrap(s.artista)?.nombre ?? "—",
-      }))
-    );
-    setLoadingDetail(false);
-  }
 
   async function load() {
     const supabase = createClient();
@@ -233,7 +153,7 @@ export default function ProductorEventosPage() {
               onClick={() =>
                 e.estado === "borrador"
                   ? router.push(`/productor/canvas/${e.id}`)
-                  : openDetail(e)
+                  : setDetail(e)
               }
               style={{ cursor: "none" }}
             >
@@ -248,7 +168,7 @@ export default function ProductorEventosPage() {
                 </div>
               </div>
               <Pill variant={estadoVariant[e.estado] || "default"} dot>
-                {e.estado}
+                {eventoLabel(e.estado)}
               </Pill>
               {e.estado === "borrador" ? (
                 <button
@@ -311,118 +231,10 @@ export default function ProductorEventosPage() {
         </Link>
       </div>
 
-      <Modal
-        open={!!detail}
+      <EventoDetailModal
+        evento={detail ? { id: detail.id, titulo: detail.titulo, estado: detail.estado } : null}
         onClose={() => setDetail(null)}
-        title={detail?.titulo || "Detalle del evento"}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setDetail(null)}>
-              Cerrar
-            </Button>
-            {detail && (
-              <Button
-                variant="primary"
-                onClick={() => router.push(`/productor/canvas/${detail.id}`)}
-                data-cursor="abrir canvas →"
-              >
-                Abrir canvas <Icon.arrow />
-              </Button>
-            )}
-          </>
-        }
-      >
-        {detail && (
-          <div className="flex-col">
-            <div>
-              <div className="text-mute" style={{ marginBottom: 6 }}>
-                ESTADO
-              </div>
-              <Pill variant={estadoVariant[detail.estado] || "default"} dot>
-                {detail.estado}
-              </Pill>
-            </div>
-            <hr className="hr" />
-            <div>
-              <div className="text-mute" style={{ marginBottom: 8 }}>
-                ESPACIO · {venueSols.length}
-              </div>
-              {loadingDetail ? (
-                <div className="text-mute">Cargando…</div>
-              ) : venueSols.length === 0 ? (
-                <div className="text-mute">Sin solicitud de espacio.</div>
-              ) : (
-                <div className="flex-col" style={{ gap: 8 }}>
-                  {venueSols.map((s) => (
-                    <div
-                      key={s.id}
-                      className="card raised"
-                      style={{ padding: 14, display: "grid", gap: 6 }}
-                    >
-                      <div className="flex-row between">
-                        <span
-                          style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}
-                        >
-                          {s.annex_nombre
-                            ? `${s.annex_nombre} · ${s.venue_nombre}`
-                            : s.venue_nombre}
-                        </span>
-                        <Pill variant={respVariant[s.estado] || "default"} dot>
-                          {s.estado}
-                        </Pill>
-                      </div>
-                      {s.respuesta_espacio && (
-                        <div style={{ fontSize: 14 }}>
-                          <span className="text-mute">Respuesta: </span>
-                          {s.respuesta_espacio}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <hr className="hr" />
-            <div>
-              <div className="text-mute" style={{ marginBottom: 8 }}>
-                ARTISTAS · {artistaSols.length}
-              </div>
-              {loadingDetail ? (
-                <div className="text-mute">Cargando…</div>
-              ) : artistaSols.length === 0 ? (
-                <div className="text-mute">Sin solicitudes a artistas.</div>
-              ) : (
-                <div className="flex-col" style={{ gap: 8 }}>
-                  {artistaSols.map((s) => (
-                    <div
-                      key={s.id}
-                      className="card raised"
-                      style={{ padding: 14, display: "grid", gap: 6 }}
-                    >
-                      <div className="flex-row between">
-                        <span
-                          style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}
-                        >
-                          {s.artista_nombre}
-                        </span>
-                        <Pill variant={respVariant[s.estado] || "default"} dot>
-                          {s.estado}
-                        </Pill>
-                      </div>
-                      {s.respuesta_artista && (
-                        <div style={{ fontSize: 14 }}>
-                          <span className="text-mute">Respuesta: </span>
-                          {s.respuesta_artista}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
+      />
 
       <Modal
         open={!!toDelete}

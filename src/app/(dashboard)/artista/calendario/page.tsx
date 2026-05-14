@@ -25,18 +25,17 @@ const MONTHS = [
   "diciembre",
 ];
 
-interface SolicitudCal {
+interface SolicitudArtistaCal {
   id: string;
   fecha_evento: string;
-  num_personas: number | null;
   mensaje_productor: string | null;
-  venue_nombre: string;
-  annex_nombre: string | null;
+  artista_nombre: string;
   evento_id: string;
   evento_titulo: string;
   evento_tipo: string | null;
   evento_ciudad: string | null;
   evento_estado: EstadoEvento;
+  evento_num_personas: number | null;
   productor_nombre: string | null;
   productor_email: string | null;
 }
@@ -78,41 +77,40 @@ function unwrap<T>(rel: T | T[] | null | undefined): T | null {
   return Array.isArray(rel) ? rel[0] ?? null : rel;
 }
 
-export default function EspacioCalendarioPage() {
+export default function ArtistaCalendarioPage() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
-  const [rows, setRows] = useState<SolicitudCal[]>([]);
+  const [rows, setRows] = useState<SolicitudArtistaCal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [detail, setDetail] = useState<SolicitudCal | null>(null);
+  const [detail, setDetail] = useState<SolicitudArtistaCal | null>(null);
 
   useEffect(() => {
     async function load() {
       const supabase = createClient();
       const { data } = await supabase
-        .from("solicitudes")
+        .from("solicitudes_artistas")
         .select(
-          `id, fecha_evento, num_personas, mensaje_productor,
-           venue:venues!solicitudes_venue_id_fkey(nombre),
-           annex:venue_annexes!solicitudes_venue_annex_id_fkey(nombre),
-           evento:eventos!solicitudes_evento_id_fkey(
-             id, titulo, tipo, ciudad, estado,
+          `id, fecha_evento, mensaje_productor,
+           artista:artistas!solicitudes_artistas_artista_id_fkey(nombre),
+           evento:eventos!solicitudes_artistas_evento_id_fkey(
+             id, titulo, tipo, ciudad, estado, num_personas,
              cliente:profiles!eventos_cliente_id_fkey(nombre, email)
            )`
         )
         .eq("estado", "aceptada")
         .not("fecha_evento", "is", null);
 
-      const mapped: SolicitudCal[] = (data ?? [])
+      const mapped: SolicitudArtistaCal[] = (data ?? [])
         .map((s) => {
-          const venue = unwrap(s.venue) as { nombre: string } | null;
-          const annex = unwrap(s.annex) as { nombre: string } | null;
+          const artista = unwrap(s.artista) as { nombre: string } | null;
           const ev = unwrap(s.evento) as {
             id: string;
             titulo: string;
             tipo: string | null;
             ciudad: string | null;
             estado: EstadoEvento;
+            num_personas: number | null;
             cliente: { nombre: string; email: string } | { nombre: string; email: string }[] | null;
           } | null;
           if (!ev || !s.fecha_evento) return null;
@@ -120,20 +118,19 @@ export default function EspacioCalendarioPage() {
           return {
             id: s.id as string,
             fecha_evento: s.fecha_evento as string,
-            num_personas: s.num_personas as number | null,
             mensaje_productor: s.mensaje_productor as string | null,
-            venue_nombre: venue?.nombre ?? "—",
-            annex_nombre: annex?.nombre ?? null,
+            artista_nombre: artista?.nombre ?? "—",
             evento_id: ev.id,
             evento_titulo: ev.titulo,
             evento_tipo: ev.tipo,
             evento_ciudad: ev.ciudad,
             evento_estado: ev.estado,
+            evento_num_personas: ev.num_personas,
             productor_nombre: cli?.nombre ?? null,
             productor_email: cli?.email ?? null,
           };
         })
-        .filter((x): x is SolicitudCal => !!x);
+        .filter((x): x is SolicitudArtistaCal => !!x);
       setRows(mapped);
       setLoading(false);
     }
@@ -142,7 +139,7 @@ export default function EspacioCalendarioPage() {
 
   const days = buildMonth(year, month);
   const eventosPorDia = useMemo(() => {
-    const map = new Map<string, SolicitudCal[]>();
+    const map = new Map<string, SolicitudArtistaCal[]>();
     for (const r of rows) {
       const k = r.fecha_evento.slice(0, 10);
       if (!map.has(k)) map.set(k, []);
@@ -178,9 +175,9 @@ export default function EspacioCalendarioPage() {
   return (
     <>
       <PageHead
-        eyebrow={`Tu disponibilidad — ${MONTHS[month]} ${year}`}
+        eyebrow={`Tu agenda — ${MONTHS[month]} ${year}`}
         title="Calendario"
-        sub="Eventos confirmados en tu espacio. Click en uno para ver el detalle."
+        sub="Eventos confirmados en los que tocarás. Click para ver el detalle."
         actions={
           <div className="segmented">
             <button type="button" onClick={() => nav(-1)} data-cursor="mes anterior">
@@ -289,14 +286,7 @@ export default function EspacioCalendarioPage() {
                 label="Fecha"
                 value={new Date(detail.fecha_evento).toLocaleDateString("es-ES")}
               />
-              <Field
-                label="Espacio"
-                value={
-                  detail.annex_nombre
-                    ? `${detail.annex_nombre} · ${detail.venue_nombre}`
-                    : detail.venue_nombre
-                }
-              />
+              <Field label="Tocando como" value={detail.artista_nombre} />
               <Field
                 label="Tipo · ciudad"
                 value={
@@ -305,7 +295,9 @@ export default function EspacioCalendarioPage() {
               />
               <Field
                 label="Pax"
-                value={detail.num_personas ? String(detail.num_personas) : "—"}
+                value={
+                  detail.evento_num_personas ? String(detail.evento_num_personas) : "—"
+                }
               />
               <Field
                 label="Productor"
