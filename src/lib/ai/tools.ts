@@ -111,16 +111,26 @@ export function buildTools(supabase: SupabaseClient, eventoId: string) {
       },
     }),
 
-    select_venue: tool({
+    select_annex: tool({
       description:
-        "Pick a venue for the event. The user can change it later. Pass the venue uuid returned by search_venues.",
-      inputSchema: z.object({ venue_id: z.string().uuid() }),
-      execute: async ({ venue_id }) => {
+        "Pick an annex (a rentable sub-space of a venue) for the event. The user can change it later. Pass the annex_id returned by search_annexes. The parent venue is derived automatically.",
+      inputSchema: z.object({ annex_id: z.string().uuid() }),
+      execute: async ({ annex_id }) => {
+        const { data: annex, error: annexErr } = await supabase
+          .from("venue_annexes")
+          .select("id, venue_id")
+          .eq("id", annex_id)
+          .single();
+        if (annexErr || !annex) {
+          return { ok: false, error: annexErr?.message ?? "annex no encontrado" };
+        }
         const { error } = await supabase
           .from("eventos")
-          .update({ venue_id })
+          .update({ venue_annex_id: annex.id, venue_id: annex.venue_id })
           .eq("id", eventoId);
-        return error ? { ok: false, error: error.message } : { ok: true, venue_id };
+        return error
+          ? { ok: false, error: error.message }
+          : { ok: true, annex_id: annex.id, venue_id: annex.venue_id };
       },
     }),
 
@@ -164,80 +174,121 @@ export function buildTools(supabase: SupabaseClient, eventoId: string) {
       },
     }),
 
-    search_venues: tool({
+    search_annexes: tool({
       description:
-        "Semantic search of the venue catalog. Use this to recommend spaces. The producer will see the results as cards in the chat — they can pick one with a button. Always pass ciudad if the event has one assigned.",
+        "Semantic search of the venue-annex catalog. Annexes are the actual rentable sub-spaces inside a venue (each annex has its own capacity, event-types it accepts, square meters, price). Use this to recommend spaces. The producer will see the results as cards in the chat — they can pick one with a button.",
       inputSchema: z.object({
         query: z
           .string()
           .describe("Short natural-language description of what you're looking for."),
         ciudad: z.string().nullable().optional(),
-        tipo: z
+        tipo_evento: z
           .string()
           .nullable()
           .optional()
           .describe(
-            "Optional VENUE type filter: sala, rooftop, restaurante, hotel, aire_libre, local_privado, otro. NOT the event type (corporate, boda, etc.) — leave null unless the user explicitly asks for a kind of space."
+            "Filter by event-type the annex must support: corporate, boda, fiesta_privada, conferencia, etc. (one of TIPOS_EVENTO)."
           ),
+        capacity_min: z
+          .number()
+          .int()
+          .nullable()
+          .optional()
+          .describe("Minimum capacity the annex must support (max of standing or seated)."),
         limit: z.number().min(1).max(8).default(6),
       }),
-      execute: async ({ query, ciudad, tipo, limit }) => {
-        // Fallback de ciudad al estado del evento si el LLM la omite.
-        // OJO: NO hacemos fallback de tipo — el tipo del evento (corporate, boda)
-        // es una taxonomía distinta a la del venue (sala, rooftop, restaurante).
-        // El LLM puede pasar un tipo de venue si el usuario lo pide explícitamente.
+      execute: async ({ query, ciudad, tipo_evento, capacity_min, limit }) => {
+        // Fallback al estado del evento si el LLM omite filtros — el evento ya
+        // tiene tipo / ciudad / num_personas asignados desde el brief.
         const { data: ev } = await supabase
           .from("eventos")
-          .select("ciudad")
+          .select("ciudad, tipo, num_personas")
           .eq("id", eventoId)
           .single();
         const ciudadFilter = (ciudad ?? ev?.ciudad ?? null) || null;
-        const tipoFilter = tipo || null;
+        const tipoEventoFilter = (tipo_evento ?? ev?.tipo ?? null) || null;
+        const capacityFilter = capacity_min ?? ev?.num_personas ?? null;
         const matchCount = Math.max(limit ?? 6, 6);
 
-        console.log("[search_venues] called", {
+        console.log("[search_annexes] called", {
           query,
-          llm_ciudad: ciudad,
-          llm_tipo: tipo,
-          state_ciudad: ev?.ciudad ?? null,
-          applied_ciudad: ciudadFilter,
-          applied_tipo: tipoFilter,
+          llm: { ciudad, tipo_evento, capacity_min },
+          state: { ciudad: ev?.ciudad, tipo: ev?.tipo, num_personas: ev?.num_personas },
+          applied: {
+            ciudad: ciudadFilter,
+            tipo_evento: tipoEventoFilter,
+            capacity_min: capacityFilter,
+          },
           limit: matchCount,
         });
 
         try {
           const embedding = await embedText(query);
-          const { data, error } = await supabase.rpc("match_venues", {
+          const { data, error } = await supabase.rpc("match_annexes", {
             query_embedding: embedding,
             match_count: matchCount,
             ciudad_filter: ciudadFilter,
-            tipo_filter: tipoFilter,
-            exterior_only: null,
+            tipo_evento_filter: tipoEventoFilter,
+            capacity_min: capacityFilter,
           });
           if (error) {
-            console.error("[search_venues] rpc error", { error, query, ciudadFilter, tipoFilter });
+            console.error("[search_annexes] rpc error", { error });
             return { ok: false, error: error.message, results: [] };
           }
-          console.log("[search_venues] rpc ok", { count: data?.length ?? 0 });
+          console.log("[search_annexes] rpc ok", { count: data?.length ?? 0 });
 
-          // Hydrate with cover image so the card renderer doesn't need a 2nd fetch.
-          const ids = (data ?? []).map((r: { id: string }) => r.id);
-          const { data: covers } = ids.length
-            ? await supabase.from("venues").select("id, images").in("id", ids)
-            : { data: [] as { id: string; images: unknown }[] };
-          const coverById = new Map<string, string | null>();
-          for (const v of covers ?? []) {
+          // Hidrato con foto del annex (primera image) y foto principal del venue
+          // como fallback, para que la card renderice sin segundas peticiones.
+          const annexIds = (data ?? []).map((r: { annex_id: string }) => r.annex_id);
+          const venueIds = Array.from(
+            new Set((data ?? []).map((r: { venue_id: string }) => r.venue_id))
+          ) as string[];
+
+          const [annexCovers, venueCovers] = await Promise.all([
+            annexIds.length
+              ? supabase.from("venue_annexes").select("id, images").in("id", annexIds)
+              : Promise.resolve({ data: [] as { id: string; images: unknown }[] }),
+            venueIds.length
+              ? supabase.from("venues").select("id, images").in("id", venueIds)
+              : Promise.resolve({ data: [] as { id: string; images: unknown }[] }),
+          ]);
+
+          const annexCover = new Map<string, string | null>();
+          for (const a of annexCovers.data ?? []) {
+            const imgs = (a.images as { url: string; tag?: string }[] | null) ?? [];
+            const principal = imgs.find((i) => i.tag === "principal") ?? imgs[0];
+            annexCover.set(a.id as string, principal?.url ?? null);
+          }
+          const venueCover = new Map<string, string | null>();
+          for (const v of venueCovers.data ?? []) {
             const imgs = (v.images as { url: string; tag?: string }[] | null) ?? [];
             const principal = imgs.find((i) => i.tag === "principal") ?? imgs[0];
-            coverById.set(v.id as string, principal?.url ?? null);
+            venueCover.set(v.id as string, principal?.url ?? null);
           }
+
           const results = (data ?? []).map((r: Record<string, unknown>) => ({
-            ...r,
-            cover: coverById.get(r.id as string) ?? null,
+            id: r.annex_id, // alias para que el LLM pueda referirse al annex como "id"
+            annex_id: r.annex_id,
+            annex_nombre: r.annex_nombre,
+            tipos_evento: r.tipos_evento,
+            tipo_espacio: r.tipo_espacio,
+            capacity: r.capacity,
+            metros_cuadrados: r.metros_cuadrados,
+            precio_desde: r.precio_desde,
+            precio_hasta: r.precio_hasta,
+            unidad_precio: r.unidad_precio,
+            venue_id: r.venue_id,
+            venue_nombre: r.venue_nombre,
+            venue_ciudad: r.venue_ciudad,
+            venue_descripcion_corta: r.venue_descripcion_corta,
+            cover:
+              annexCover.get(r.annex_id as string) ??
+              venueCover.get(r.venue_id as string) ??
+              null,
           }));
           return { ok: true, results };
         } catch (e) {
-          console.error("[search_venues] threw", { e, query, ciudad, tipo });
+          console.error("[search_annexes] threw", { e, query });
           return {
             ok: false,
             error: e instanceof Error ? e.message : String(e),
@@ -312,6 +363,7 @@ interface EventState {
   presupuesto_min: number | null;
   presupuesto_max: number | null;
   venue_id: string | null;
+  venue_annex_id: string | null;
   artistas_ids: string[];
   brief: { catering?: string };
 }
@@ -331,7 +383,8 @@ export function buildSystemPrompt(state: EventState, ciudades: string[]): string
       `  - presupuesto: ${state.presupuesto_min ?? "?"}€ – ${state.presupuesto_max ?? "?"}€`
     );
   }
-  if (state.venue_id) lines.push(`  - venue elegido: sí (${state.venue_id})`);
+  if (state.venue_annex_id)
+    lines.push(`  - annex elegido: sí (${state.venue_annex_id})`);
   if (state.artistas_ids.length > 0)
     lines.push(`  - artistas elegidos: ${state.artistas_ids.length}`);
   if (state.brief?.catering) lines.push(`  - catering: ${cateringLbl}`);
@@ -343,7 +396,7 @@ export function buildSystemPrompt(state: EventState, ciudades: string[]): string
   if (!state.num_personas) missing.push("personas");
   if (state.presupuesto_min === null && state.presupuesto_max === null)
     missing.push("presupuesto");
-  if (!state.venue_id) missing.push("venue");
+  if (!state.venue_annex_id) missing.push("espacio");
   if (state.artistas_ids.length === 0) missing.push("artistas (opcional)");
   if (!state.brief?.catering) missing.push("catering");
 
@@ -368,11 +421,11 @@ Cómo trabajas:
    - personas → set_personas (número entero aproximado)
    - presupuesto → set_presupuesto (rango min/max en €, alguno puede ser null)
    - catering → set_catering (si/no/por_ver)
-3. Cuando tengas tipo + ciudad + personas, llama a search_venues y muestra resultados.
-   - SIEMPRE pasa el parámetro 'ciudad' si el evento ya tiene ciudad asignada.
-   - NO pases el 'tipo' del evento (corporate, boda…) al search_venues. El parámetro 'tipo' de esa tool es el tipo del ESPACIO (sala, rooftop, restaurante…), una taxonomía distinta. Déjalo null salvo que el usuario pida explícitamente un tipo de espacio.
+3. Cuando tengas tipo + ciudad + personas, llama a search_annexes y muestra resultados.
+   - Lo que se alquila NO es el venue entero sino un "annex" dentro del venue (una sala/zona concreta).
+   - La tool aplica por defecto ciudad / tipo_evento / capacity_min desde el estado del evento — solo pasa parámetros si quieres sobreescribirlos.
 4. Si menciona música en vivo, DJ, banda → llama a search_artists.
-5. Si el usuario expresa interés por un venue o artista concreto de los sugeridos, llama a select_venue / add_artist.
+5. Si el usuario expresa interés por un annex o artista concreto de los sugeridos, llama a select_annex / add_artist.
 6. NO inventes venues o artistas — solo usa los que devuelve la búsqueda.
 7. Tras llamar a una tool exitosa, responde con una frase corta de confirmación ("anotado", "perfecto").
 8. Si el usuario quiere quitar un artista, llama a remove_artist.

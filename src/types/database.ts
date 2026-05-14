@@ -121,6 +121,7 @@ export interface Evento {
   presupuesto_min: number | null;
   presupuesto_max: number | null;
   venue_id: string | null;
+  venue_annex_id: string | null;
   artistas_ids: string[];
   estado: EstadoEvento;
   brief: EventoBrief;
@@ -133,6 +134,7 @@ export interface Solicitud {
   id: string;
   evento_id: string;
   venue_id: string;
+  venue_annex_id: string | null;
   productor_id: string;
   estado: EstadoSolicitud;
   mensaje_productor: string | null;

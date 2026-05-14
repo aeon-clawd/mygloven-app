@@ -47,11 +47,16 @@ function uiToText(message: UIMessage): string {
     .join("");
 }
 
-interface VenueCover {
-  id: string;
-  nombre: string;
-  ciudad: string | null;
-  tipo: string | null;
+interface AnnexCover {
+  annex_id: string | null;
+  annex_nombre: string | null;
+  venue_id: string;
+  venue_nombre: string;
+  venue_ciudad: string | null;
+  venue_descripcion_corta: string | null;
+  tipos_evento: string[];
+  capacity: number | null;
+  metros_cuadrados: number | null;
   cover: string | null;
 }
 
@@ -67,7 +72,7 @@ export default function CanvasPage() {
   const eventoId = params.id;
   const [mode, setMode] = useState<CanvasMode>("split");
   const [evento, setEvento] = useState<Evento | null>(null);
-  const [venue, setVenue] = useState<VenueCover | null>(null);
+  const [venue, setVenue] = useState<AnnexCover | null>(null);
   const [artistas, setArtistas] = useState<ArtistCover[]>([]);
   const [ciudades, setCiudades] = useState<string[]>([]);
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | null>(null);
@@ -91,22 +96,68 @@ export default function CanvasPage() {
       ).sort()
     );
 
-    if (ev?.venue_id) {
-      const { data } = await supabase
-        .from("venues")
-        .select("id, nombre, ciudad, tipo, images")
-        .eq("id", ev.venue_id)
-        .single();
-      if (data) {
-        const imgs = (data.images as { url: string; tag?: string }[] | null) ?? [];
-        const principal = imgs.find((i) => i.tag === "principal") ?? imgs[0];
+    if (ev?.venue_annex_id || ev?.venue_id) {
+      const [annexRes, venueRes] = await Promise.all([
+        ev.venue_annex_id
+          ? supabase
+              .from("venue_annexes")
+              .select(
+                "id, nombre, tipos_evento, config_de_pie, config_sentado, metros_cuadrados, images, venue_id"
+              )
+              .eq("id", ev.venue_annex_id)
+              .single()
+          : Promise.resolve({ data: null as null }),
+        ev.venue_id
+          ? supabase
+              .from("venues")
+              .select("id, nombre, ciudad, descripcion_corta, images")
+              .eq("id", ev.venue_id)
+              .single()
+          : Promise.resolve({ data: null as null }),
+      ]);
+
+      const annex = annexRes.data as {
+        id: string;
+        nombre: string;
+        tipos_evento: string[] | null;
+        config_de_pie: number | null;
+        config_sentado: number | null;
+        metros_cuadrados: number | null;
+        images: { url: string; tag?: string }[] | null;
+        venue_id: string;
+      } | null;
+      const venueData = venueRes.data as {
+        id: string;
+        nombre: string;
+        ciudad: string | null;
+        descripcion_corta: string | null;
+        images: { url: string; tag?: string }[] | null;
+      } | null;
+
+      // If we only have venue_id (no annex), fall back gracefully.
+      if (annex || venueData) {
+        const annexImgs = annex?.images ?? [];
+        const annexPrincipal =
+          annexImgs.find((i) => i.tag === "principal") ?? annexImgs[0];
+        const venueImgs = venueData?.images ?? [];
+        const venuePrincipal =
+          venueImgs.find((i) => i.tag === "principal") ?? venueImgs[0];
         setVenue({
-          id: data.id,
-          nombre: data.nombre,
-          ciudad: data.ciudad,
-          tipo: data.tipo,
-          cover: principal?.url ?? null,
+          annex_id: annex?.id ?? null,
+          annex_nombre: annex?.nombre ?? null,
+          venue_id: venueData?.id ?? annex?.venue_id ?? "",
+          venue_nombre: venueData?.nombre ?? "—",
+          venue_ciudad: venueData?.ciudad ?? null,
+          venue_descripcion_corta: venueData?.descripcion_corta ?? null,
+          tipos_evento: annex?.tipos_evento ?? [],
+          capacity:
+            Math.max(annex?.config_de_pie ?? 0, annex?.config_sentado ?? 0) ||
+            null,
+          metros_cuadrados: annex?.metros_cuadrados ?? null,
+          cover: annexPrincipal?.url ?? venuePrincipal?.url ?? null,
         });
+      } else {
+        setVenue(null);
       }
     } else {
       setVenue(null);
@@ -188,7 +239,7 @@ function CanvasInner({
   mode: CanvasMode;
   setMode: (m: CanvasMode) => void;
   evento: Evento;
-  venue: VenueCover | null;
+  venue: AnnexCover | null;
   artistas: ArtistCover[];
   ciudades: string[];
   initialMessages: UIMessage[];
@@ -226,11 +277,11 @@ function CanvasInner({
     await patchEvento({ brief: next });
   }
 
-  async function selectVenue(venue_id: string | null) {
+  async function selectAnnex(annex_id: string | null) {
     await fetch(`/api/eventos/${eventoId}/select-venue`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ venue_id }),
+      body: JSON.stringify({ annex_id }),
     });
     onTurnFinished();
   }
@@ -255,7 +306,7 @@ function CanvasInner({
 
   const isDraft = evento.estado === "borrador";
   const isSent = evento.estado === "en_propuestas";
-  const canSend = isDraft && !!evento.venue_id && !submitting;
+  const canSend = isDraft && !!evento.venue_annex_id && !submitting;
 
   async function enviarSolicitudes() {
     if (!canSend) return;
@@ -279,7 +330,7 @@ function CanvasInner({
     ? "Enviando…"
     : isSent
       ? "Solicitud enviada"
-      : !evento.venue_id
+      : !evento.venue_annex_id
         ? "Elige un espacio primero"
         : "Enviar solicitud";
 
@@ -331,9 +382,9 @@ function CanvasInner({
             setInput={setInput}
             send={send}
             sending={sending}
-            currentVenueId={evento.venue_id}
+            currentAnnexId={evento.venue_annex_id}
             currentArtistIds={evento.artistas_ids ?? []}
-            onChooseVenue={selectVenue}
+            onChooseAnnex={selectAnnex}
             onAddArtist={addArtist}
             onRemoveArtist={removeArtist}
           />
@@ -344,7 +395,7 @@ function CanvasInner({
             ciudades={ciudades}
             onPatch={patchEvento}
             onPatchBrief={patchBriefField}
-            onClearVenue={() => selectVenue(null)}
+            onClearVenue={() => selectAnnex(null)}
             onRemoveArtist={removeArtist}
           />
         </div>
@@ -358,9 +409,9 @@ function CanvasInner({
             setInput={setInput}
             send={send}
             sending={sending}
-            currentVenueId={evento.venue_id}
+            currentAnnexId={evento.venue_annex_id}
             currentArtistIds={evento.artistas_ids ?? []}
-            onChooseVenue={selectVenue}
+            onChooseAnnex={selectAnnex}
             onAddArtist={addArtist}
             onRemoveArtist={removeArtist}
           />
@@ -376,7 +427,7 @@ function CanvasInner({
             ciudades={ciudades}
             onPatch={patchEvento}
             onPatchBrief={patchBriefField}
-            onClearVenue={() => selectVenue(null)}
+            onClearVenue={() => selectAnnex(null)}
             onRemoveArtist={removeArtist}
           />
         </div>
@@ -393,9 +444,9 @@ function ChatPane({
   setInput,
   send,
   sending,
-  currentVenueId,
+  currentAnnexId,
   currentArtistIds,
-  onChooseVenue,
+  onChooseAnnex,
   onAddArtist,
   onRemoveArtist,
 }: {
@@ -404,9 +455,9 @@ function ChatPane({
   setInput: (s: string) => void;
   send: () => void;
   sending: boolean;
-  currentVenueId: string | null;
+  currentAnnexId: string | null;
   currentArtistIds: string[];
-  onChooseVenue: (id: string) => void | Promise<void>;
+  onChooseAnnex: (id: string) => void | Promise<void>;
   onAddArtist: (id: string) => void | Promise<void>;
   onRemoveArtist: (id: string) => void | Promise<void>;
 }) {
@@ -423,9 +474,9 @@ function ChatPane({
           <ChatMessageBlock
             key={m.id}
             m={m}
-            currentVenueId={currentVenueId}
+            currentAnnexId={currentAnnexId}
             currentArtistIds={currentArtistIds}
-            onChooseVenue={onChooseVenue}
+            onChooseAnnex={onChooseAnnex}
             onAddArtist={onAddArtist}
             onRemoveArtist={onRemoveArtist}
           />
@@ -472,37 +523,37 @@ function ChatInput({
 
 function ChatMessageBlock({
   m,
-  currentVenueId,
+  currentAnnexId,
   currentArtistIds,
-  onChooseVenue,
+  onChooseAnnex,
   onAddArtist,
   onRemoveArtist,
 }: {
   m: UIMessage;
-  currentVenueId: string | null;
+  currentAnnexId: string | null;
   currentArtistIds: string[];
-  onChooseVenue: (id: string) => void | Promise<void>;
+  onChooseAnnex: (id: string) => void | Promise<void>;
   onAddArtist: (id: string) => void | Promise<void>;
   onRemoveArtist: (id: string) => void | Promise<void>;
 }) {
   const text = uiToText(m);
-  const venueResults = pickToolResults<VenueResult>(m, "tool-search_venues");
+  const annexResults = pickToolResults<AnnexResult>(m, "tool-search_annexes");
   const artistResults = pickToolResults<ArtistResult>(m, "tool-search_artists");
 
-  if (!text && venueResults.length === 0 && artistResults.length === 0) return null;
+  if (!text && annexResults.length === 0 && artistResults.length === 0) return null;
 
   return (
     <div className={`msg ${m.role === "user" ? "user" : "ai"}`}>
       {text && <div className="bubble">{text}</div>}
 
-      {venueResults.length > 0 && (
+      {annexResults.length > 0 && (
         <div className="tool-cards">
-          {venueResults.map((v) => (
-            <VenueResultCard
-              key={v.id}
-              v={v}
-              chosen={currentVenueId === v.id}
-              onChoose={() => onChooseVenue(v.id)}
+          {annexResults.map((a) => (
+            <AnnexResultCard
+              key={a.annex_id}
+              a={a}
+              chosen={currentAnnexId === a.annex_id}
+              onChoose={() => onChooseAnnex(a.annex_id)}
             />
           ))}
         </div>
@@ -527,14 +578,20 @@ function ChatMessageBlock({
   );
 }
 
-interface VenueResult {
-  id: string;
-  nombre: string;
-  ciudad: string | null;
-  tipo: string | null;
-  descripcion_corta: string | null;
+interface AnnexResult {
+  annex_id: string;
+  annex_nombre: string;
+  tipos_evento: string[] | null;
+  tipo_espacio: string | null;
+  capacity: number | null;
+  metros_cuadrados: number | null;
   precio_desde: number | null;
+  precio_hasta: number | null;
   unidad_precio: string | null;
+  venue_id: string;
+  venue_nombre: string;
+  venue_ciudad: string | null;
+  venue_descripcion_corta: string | null;
   cover: string | null;
 }
 interface ArtistResult {
@@ -562,32 +619,38 @@ function pickToolResults<T>(m: UIMessage, type: string): T[] {
   return out;
 }
 
-function VenueResultCard({
-  v,
+function AnnexResultCard({
+  a,
   chosen,
   onChoose,
 }: {
-  v: VenueResult;
+  a: AnnexResult;
   chosen: boolean;
   onChoose: () => void;
 }) {
+  const subParts = [
+    a.venue_nombre,
+    a.venue_ciudad,
+    a.capacity ? `hasta ${a.capacity} pax` : null,
+    a.metros_cuadrados ? `${a.metros_cuadrados} m²` : null,
+  ].filter(Boolean);
   return (
     <div className="tool-card">
       <div className="ph">
-        {v.cover && (
-          <Image src={v.cover} alt={v.nombre} fill style={{ objectFit: "cover" }} unoptimized />
+        {a.cover && (
+          <Image src={a.cover} alt={a.annex_nombre} fill style={{ objectFit: "cover" }} unoptimized />
         )}
       </div>
       <div className="body">
-        <h4>{v.nombre}</h4>
+        <h4>{a.annex_nombre}</h4>
         <div className="sub">
-          {[v.ciudad, v.tipo].filter(Boolean).join(" · ") || "—"}
-          {v.precio_desde && ` · ${v.precio_desde.toLocaleString("es-ES")}€`}
+          {subParts.join(" · ") || "—"}
+          {a.precio_desde && ` · desde ${a.precio_desde.toLocaleString("es-ES")}€`}
         </div>
-        {v.descripcion_corta && <div className="desc">{v.descripcion_corta}</div>}
+        {a.venue_descripcion_corta && <div className="desc">{a.venue_descripcion_corta}</div>}
         <div className="actions">
           <Link
-            href={`/productor/explorar/espacios/${v.id}`}
+            href={`/productor/explorar/espacios/${a.venue_id}`}
             target="_blank"
             data-cursor="ver ↗"
           >
@@ -678,7 +741,7 @@ function BriefPane({
   onRemoveArtist,
 }: {
   evento: Evento;
-  venue: VenueCover | null;
+  venue: AnnexCover | null;
   artistas: ArtistCover[];
   ciudades: string[];
   onPatch: (patch: Partial<Evento>) => void | Promise<void>;
@@ -696,7 +759,7 @@ function BriefPane({
     if (evento.num_personas) n++;
     if (evento.presupuesto_min !== null || evento.presupuesto_max !== null) n++;
     if (evento.brief?.catering) n++;
-    if (evento.venue_id) n++;
+    if (evento.venue_annex_id) n++;
     if ((evento.artistas_ids?.length ?? 0) > 0) n++;
     return n;
   }, [evento, hasTitle]);
@@ -992,7 +1055,7 @@ function BriefVenueRow({
   venue,
   onClear,
 }: {
-  venue: VenueCover | null;
+  venue: AnnexCover | null;
   onClear: () => void | Promise<void>;
 }) {
   return (
@@ -1006,9 +1069,16 @@ function BriefVenueRow({
               style={venue.cover ? { backgroundImage: `url(${venue.cover})` } : undefined}
             />
             <div className="meta">
-              <span className="nm">{venue.nombre}</span>
+              <span className="nm">{venue.annex_nombre ?? venue.venue_nombre}</span>
               <span className="sub">
-                {[venue.ciudad, venue.tipo].filter(Boolean).join(" · ") || "—"}
+                {[
+                  venue.annex_nombre ? `en ${venue.venue_nombre}` : null,
+                  venue.venue_ciudad,
+                  venue.capacity ? `hasta ${venue.capacity} pax` : null,
+                  venue.metros_cuadrados ? `${venue.metros_cuadrados} m²` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "—"}
               </span>
             </div>
             <button type="button" onClick={onClear} data-cursor="quitar">

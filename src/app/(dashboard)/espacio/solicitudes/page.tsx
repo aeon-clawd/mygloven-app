@@ -20,6 +20,7 @@ interface SolicitudRow {
   respuesta_espacio: string | null;
   created_at: string;
   venue: { nombre: string; ciudad: string | null } | null;
+  annex: { nombre: string } | null;
   evento: {
     id: string;
     titulo: string;
@@ -73,6 +74,7 @@ export default function EspacioSolicitudesPage() {
       .select(
         `id, estado, fecha_evento, num_personas, mensaje_productor, respuesta_espacio, created_at,
          venue:venues!solicitudes_venue_id_fkey(nombre, ciudad),
+         annex:venue_annexes!solicitudes_venue_annex_id_fkey(nombre),
          evento:eventos!solicitudes_evento_id_fkey(
            id, titulo, tipo, ciudad, presupuesto_min, presupuesto_max,
            cliente:profiles!eventos_cliente_id_fkey(nombre, email)
@@ -99,6 +101,7 @@ export default function EspacioSolicitudesPage() {
         respuesta_espacio: s.respuesta_espacio as string | null,
         created_at: s.created_at as string,
         venue: unwrap(s.venue) as { nombre: string; ciudad: string | null } | null,
+        annex: unwrap(s.annex) as { nombre: string } | null,
         evento: evRaw
           ? {
               id: evRaw.id,
@@ -219,7 +222,7 @@ export default function EspacioSolicitudesPage() {
                 <div className="ttl">
                   {r.evento?.titulo || "—"}{" "}
                   <span className="text-mute" style={{ fontSize: 13, marginLeft: 6 }}>
-                    en {r.venue?.nombre || "—"}
+                    en {r.annex?.nombre ? `${r.annex.nombre} · ${r.venue?.nombre}` : r.venue?.nombre || "—"}
                   </span>
                 </div>
                 <div className="sub">
@@ -292,7 +295,14 @@ export default function EspacioSolicitudesPage() {
         {selected && (
           <div className="flex-col">
             <div className="card-grid cols-2" style={{ borderRadius: 4 }}>
-              <DetailField label="Espacio" value={selected.venue?.nombre || "—"} />
+              <DetailField
+                label="Espacio"
+                value={
+                  selected.annex?.nombre
+                    ? `${selected.annex.nombre} · ${selected.venue?.nombre || "—"}`
+                    : selected.venue?.nombre || "—"
+                }
+              />
               <DetailField
                 label="Productor"
                 value={

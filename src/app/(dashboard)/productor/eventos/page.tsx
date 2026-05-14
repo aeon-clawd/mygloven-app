@@ -49,6 +49,7 @@ interface VenueSolicitudDetail {
   estado: string;
   respuesta_espacio: string | null;
   venue_nombre: string;
+  annex_nombre: string | null;
 }
 
 interface ArtistaSolicitudDetail {
@@ -91,7 +92,7 @@ export default function ProductorEventosPage() {
       supabase
         .from("solicitudes")
         .select(
-          "id, estado, respuesta_espacio, venue:venues!solicitudes_venue_id_fkey(nombre)"
+          "id, estado, respuesta_espacio, venue:venues!solicitudes_venue_id_fkey(nombre), annex:venue_annexes!solicitudes_venue_annex_id_fkey(nombre)"
         )
         .eq("evento_id", ev.id)
         .order("created_at", { ascending: false }),
@@ -109,11 +110,13 @@ export default function ProductorEventosPage() {
         estado: string;
         respuesta_espacio: string | null;
         venue: { nombre: string } | { nombre: string }[] | null;
+        annex: { nombre: string } | { nombre: string }[] | null;
       }>).map((s) => ({
         id: s.id,
         estado: s.estado,
         respuesta_espacio: s.respuesta_espacio,
         venue_nombre: unwrap(s.venue)?.nombre ?? "—",
+        annex_nombre: unwrap(s.annex)?.nombre ?? null,
       }))
     );
     setArtistaSols(
@@ -360,7 +363,9 @@ export default function ProductorEventosPage() {
                         <span
                           style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600 }}
                         >
-                          {s.venue_nombre}
+                          {s.annex_nombre
+                            ? `${s.annex_nombre} · ${s.venue_nombre}`
+                            : s.venue_nombre}
                         </span>
                         <Pill variant={respVariant[s.estado] || "default"} dot>
                           {s.estado}

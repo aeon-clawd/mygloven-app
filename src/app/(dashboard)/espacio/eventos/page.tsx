@@ -12,6 +12,7 @@ interface EventoConfirmadoRow {
   fecha_evento: string | null;
   num_personas: number | null;
   venue_nombre: string;
+  annex_nombre: string | null;
   evento_id: string;
   evento_titulo: string;
   evento_tipo: string | null;
@@ -56,6 +57,7 @@ export default function EspacioEventosPage() {
         .select(
           `id, estado, fecha_evento, num_personas,
            venue:venues!solicitudes_venue_id_fkey(nombre),
+           annex:venue_annexes!solicitudes_venue_annex_id_fkey(nombre),
            evento:eventos!solicitudes_evento_id_fkey(
              id, titulo, tipo, estado,
              cliente:profiles!eventos_cliente_id_fkey(nombre)
@@ -66,6 +68,7 @@ export default function EspacioEventosPage() {
 
       const mapped: EventoConfirmadoRow[] = (data ?? []).map((s) => {
         const venue = unwrap(s.venue) as { nombre: string } | null;
+        const annex = unwrap(s.annex) as { nombre: string } | null;
         const ev = unwrap(s.evento) as {
           id: string;
           titulo: string;
@@ -80,6 +83,7 @@ export default function EspacioEventosPage() {
           fecha_evento: s.fecha_evento as string | null,
           num_personas: s.num_personas as number | null,
           venue_nombre: venue?.nombre || "—",
+          annex_nombre: annex?.nombre ?? null,
           evento_id: ev?.id || "",
           evento_titulo: ev?.titulo || "—",
           evento_tipo: ev?.tipo ?? null,
@@ -133,7 +137,7 @@ export default function EspacioEventosPage() {
                 <div className="ttl">{r.evento_titulo}</div>
                 <div className="sub">
                   {[
-                    r.venue_nombre,
+                    r.annex_nombre ? `${r.annex_nombre} · ${r.venue_nombre}` : r.venue_nombre,
                     r.num_personas ? `${r.num_personas} pax` : null,
                     r.evento_tipo,
                   ]

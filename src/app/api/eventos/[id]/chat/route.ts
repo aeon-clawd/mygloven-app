@@ -22,7 +22,7 @@ export async function POST(
   const { data: evento, error } = await supabase
     .from("eventos")
     .select(
-      "id, cliente_id, tipo, ciudad, fecha_deseada, num_personas, presupuesto_min, presupuesto_max, venue_id, artistas_ids, brief"
+      "id, cliente_id, tipo, ciudad, fecha_deseada, num_personas, presupuesto_min, presupuesto_max, venue_id, venue_annex_id, artistas_ids, brief"
     )
     .eq("id", id)
     .single();
@@ -58,6 +58,7 @@ export async function POST(
         presupuesto_min: evento.presupuesto_min,
         presupuesto_max: evento.presupuesto_max,
         venue_id: evento.venue_id,
+        venue_annex_id: evento.venue_annex_id,
         artistas_ids: (evento.artistas_ids as string[] | null) ?? [],
         brief: (evento.brief as { catering?: string }) ?? {},
       },

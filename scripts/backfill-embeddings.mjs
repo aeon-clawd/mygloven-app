@@ -67,6 +67,26 @@ function venueDoc(v) {
     .join(". ");
 }
 
+function annexDoc(a) {
+  const v = a.venues ?? {};
+  const capacity = Math.max(a.config_de_pie ?? 0, a.config_sentado ?? 0) || null;
+  return [
+    a.nombre,
+    a.tipo_espacio,
+    (a.tipos_evento ?? []).join(", "),
+    capacity ? `${capacity} personas` : null,
+    a.metros_cuadrados ? `${a.metros_cuadrados} m²` : null,
+    v.nombre,
+    v.ciudad,
+    v.barrio,
+    v.descripcion_corta,
+    v.descripcion,
+    (v.tags ?? []).join(", "),
+  ]
+    .filter(Boolean)
+    .join(". ");
+}
+
 function artistDoc(a) {
   return [
     a.nombre,
@@ -125,6 +145,13 @@ const artistsRes = await backfill(
   artistDoc
 );
 
+const annexesRes = await backfill(
+  "venue_annexes",
+  "id, nombre, tipo_espacio, tipos_evento, config_de_pie, config_sentado, metros_cuadrados, venues!venue_annexes_venue_id_fkey(nombre, descripcion, descripcion_corta, ciudad, barrio, tags)",
+  annexDoc
+);
+
 console.log("\n──────────────────────────────");
-console.log(`venues  : ${venuesRes.done}/${venuesRes.seen} embedded, ${venuesRes.errors.length} error(s)`);
-console.log(`artistas: ${artistsRes.done}/${artistsRes.seen} embedded, ${artistsRes.errors.length} error(s)`);
+console.log(`venues       : ${venuesRes.done}/${venuesRes.seen} embedded, ${venuesRes.errors.length} error(s)`);
+console.log(`artistas     : ${artistsRes.done}/${artistsRes.seen} embedded, ${artistsRes.errors.length} error(s)`);
+console.log(`venue_annexes: ${annexesRes.done}/${annexesRes.seen} embedded, ${annexesRes.errors.length} error(s)`);
