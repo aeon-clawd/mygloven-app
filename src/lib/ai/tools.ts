@@ -166,18 +166,17 @@ export function buildTools(supabase: SupabaseClient, eventoId: string) {
 
     search_venues: tool({
       description:
-        "Semantic search of the venue catalog. Use this to recommend spaces. The producer will see the results as cards in the chat — they can pick one with a button.",
+        "Semantic search of the venue catalog. Use this to recommend spaces. The producer will see the results as cards in the chat — they can pick one with a button. Always pass ciudad and tipo if the event already has them set.",
       inputSchema: z.object({
         query: z
           .string()
           .describe("Short natural-language description of what you're looking for."),
         ciudad: z.string().nullable().optional(),
         tipo: z.string().nullable().optional(),
-        exterior_only: z.boolean().nullable().optional(),
-        limit: z.number().min(1).max(8).default(4),
+        limit: z.number().min(1).max(8).default(6),
       }),
-      execute: async ({ query, ciudad, tipo, exterior_only, limit }) => {
-        console.log("[search_venues] called", { query, ciudad, tipo, exterior_only, limit });
+      execute: async ({ query, ciudad, tipo, limit }) => {
+        console.log("[search_venues] called", { query, ciudad, tipo, limit });
         try {
           const embedding = await embedText(query);
           const { data, error } = await supabase.rpc("match_venues", {
@@ -185,12 +184,13 @@ export function buildTools(supabase: SupabaseClient, eventoId: string) {
             match_count: limit,
             ciudad_filter: ciudad ?? null,
             tipo_filter: tipo ?? null,
-            exterior_only: exterior_only ?? null,
+            exterior_only: null,
           });
           if (error) {
             console.error("[search_venues] rpc error", { error, query, ciudad, tipo });
             return { ok: false, error: error.message, results: [] };
           }
+          console.log("[search_venues] rpc ok", { count: data?.length ?? 0 });
 
           // Hydrate with cover image so the card renderer doesn't need a 2nd fetch.
           const ids = (data ?? []).map((r: { id: string }) => r.id);
@@ -225,7 +225,7 @@ export function buildTools(supabase: SupabaseClient, eventoId: string) {
       inputSchema: z.object({
         query: z.string(),
         genero: z.string().nullable().optional(),
-        limit: z.number().min(1).max(8).default(4),
+        limit: z.number().min(1).max(8).default(6),
       }),
       execute: async ({ query, genero, limit }) => {
         console.log("[search_artists] called", { query, genero, limit });
@@ -240,6 +240,7 @@ export function buildTools(supabase: SupabaseClient, eventoId: string) {
             console.error("[search_artists] rpc error", { error, query, genero });
             return { ok: false, error: error.message, results: [] };
           }
+          console.log("[search_artists] rpc ok", { count: data?.length ?? 0 });
 
           const ids = (data ?? []).map((r: { id: string }) => r.id);
           const { data: covers } = ids.length
@@ -340,6 +341,9 @@ Cómo trabajas:
    - presupuesto → set_presupuesto (rango min/max en €, alguno puede ser null)
    - catering → set_catering (si/no/por_ver)
 3. Cuando tengas tipo + ciudad + personas, llama a search_venues y muestra resultados.
+   - SIEMPRE pasa el parámetro 'ciudad' si el evento ya tiene ciudad asignada (mira el estado de arriba).
+   - SIEMPRE pasa el parámetro 'tipo' si el evento ya tiene tipo asignado.
+   - Solo omítelos si el usuario pide explícitamente buscar en otra ciudad o tipo distinto.
 4. Si menciona música en vivo, DJ, banda → llama a search_artists.
 5. Si el usuario expresa interés por un venue o artista concreto de los sugeridos, llama a select_venue / add_artist.
 6. NO inventes venues o artistas — solo usa los que devuelve la búsqueda.
