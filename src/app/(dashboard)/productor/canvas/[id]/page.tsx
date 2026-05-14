@@ -306,7 +306,15 @@ function CanvasInner({
 
   const isDraft = evento.estado === "borrador";
   const isSent = evento.estado === "en_propuestas";
-  const canSend = isDraft && !!evento.venue_annex_id && !submitting;
+  const hasTitle =
+    !!evento.titulo && evento.titulo !== "Evento sin título";
+  const sendMissing: string[] = [];
+  if (!hasTitle) sendMissing.push("título");
+  if (!evento.tipo) sendMissing.push("tipo");
+  if (!evento.fecha_deseada) sendMissing.push("fecha");
+  if (!evento.num_personas) sendMissing.push("personas");
+  if (!evento.venue_annex_id) sendMissing.push("espacio");
+  const canSend = isDraft && sendMissing.length === 0 && !submitting;
 
   async function enviarSolicitudes() {
     if (!canSend) return;
@@ -330,8 +338,8 @@ function CanvasInner({
     ? "Enviando…"
     : isSent
       ? "Solicitud enviada"
-      : !evento.venue_annex_id
-        ? "Elige un espacio primero"
+      : sendMissing.length > 0
+        ? `Falta ${sendMissing.join(", ")}`
         : "Enviar solicitud";
 
   return (
@@ -647,7 +655,7 @@ function AnnexResultCard({
           {subParts.join(" · ") || "—"}
           {a.precio_desde && ` · desde ${a.precio_desde.toLocaleString("es-ES")}€`}
         </div>
-        {a.venue_descripcion_corta && <div className="desc">{a.venue_descripcion_corta}</div>}
+        <div className="desc">{a.venue_descripcion_corta || ""}</div>
         <div className="actions">
           <Link
             href={`/productor/explorar/espacios/${a.venue_id}`}
@@ -695,7 +703,7 @@ function ArtistResultCard({
           {a.genero_musical || "—"}
           {a.verificado && " · ✓ verificado"}
         </div>
-        {a.descripcion_corta && <div className="desc">{a.descripcion_corta}</div>}
+        <div className="desc">{a.descripcion_corta || ""}</div>
         <div className="actions">
           <Link
             href={`/productor/explorar/artistas/${a.id}`}

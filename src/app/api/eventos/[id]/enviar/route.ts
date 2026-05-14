@@ -18,16 +18,22 @@ export async function POST(
   const { data: ev, error: evErr } = await supabase
     .from("eventos")
     .select(
-      "id, cliente_id, estado, venue_id, venue_annex_id, fecha_deseada, num_personas, artistas_ids"
+      "id, cliente_id, estado, titulo, tipo, ciudad, venue_id, venue_annex_id, fecha_deseada, num_personas, artistas_ids"
     )
     .eq("id", id)
     .single();
   if (evErr || !ev) return new Response("Evento no encontrado", { status: 404 });
   if (ev.cliente_id !== user.id) return new Response("Forbidden", { status: 403 });
 
-  if (!ev.venue_annex_id) {
+  const missing: string[] = [];
+  if (!ev.titulo || ev.titulo === "Evento sin título") missing.push("título");
+  if (!ev.tipo) missing.push("tipo de evento");
+  if (!ev.fecha_deseada) missing.push("fecha");
+  if (!ev.num_personas) missing.push("personas");
+  if (!ev.venue_annex_id) missing.push("espacio");
+  if (missing.length > 0) {
     return NextResponse.json(
-      { ok: false, error: "Elige un espacio antes de enviar la solicitud." },
+      { ok: false, error: `Faltan datos antes de enviar: ${missing.join(", ")}.` },
       { status: 400 }
     );
   }
