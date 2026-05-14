@@ -166,24 +166,33 @@ export function buildTools(supabase: SupabaseClient, eventoId: string) {
 
     search_venues: tool({
       description:
-        "Semantic search of the venue catalog. Use this to recommend spaces. The producer will see the results as cards in the chat — they can pick one with a button. Always pass ciudad and tipo if the event already has them set.",
+        "Semantic search of the venue catalog. Use this to recommend spaces. The producer will see the results as cards in the chat — they can pick one with a button. Always pass ciudad if the event has one assigned.",
       inputSchema: z.object({
         query: z
           .string()
           .describe("Short natural-language description of what you're looking for."),
         ciudad: z.string().nullable().optional(),
-        tipo: z.string().nullable().optional(),
+        tipo: z
+          .string()
+          .nullable()
+          .optional()
+          .describe(
+            "Optional VENUE type filter: sala, rooftop, restaurante, hotel, aire_libre, local_privado, otro. NOT the event type (corporate, boda, etc.) — leave null unless the user explicitly asks for a kind of space."
+          ),
         limit: z.number().min(1).max(8).default(6),
       }),
       execute: async ({ query, ciudad, tipo, limit }) => {
-        // Fallback a los valores del evento si el LLM no los pasa.
+        // Fallback de ciudad al estado del evento si el LLM la omite.
+        // OJO: NO hacemos fallback de tipo — el tipo del evento (corporate, boda)
+        // es una taxonomía distinta a la del venue (sala, rooftop, restaurante).
+        // El LLM puede pasar un tipo de venue si el usuario lo pide explícitamente.
         const { data: ev } = await supabase
           .from("eventos")
-          .select("ciudad, tipo")
+          .select("ciudad")
           .eq("id", eventoId)
           .single();
         const ciudadFilter = (ciudad ?? ev?.ciudad ?? null) || null;
-        const tipoFilter = (tipo ?? ev?.tipo ?? null) || null;
+        const tipoFilter = tipo || null;
         const matchCount = Math.max(limit ?? 6, 6);
 
         console.log("[search_venues] called", {
@@ -191,7 +200,6 @@ export function buildTools(supabase: SupabaseClient, eventoId: string) {
           llm_ciudad: ciudad,
           llm_tipo: tipo,
           state_ciudad: ev?.ciudad ?? null,
-          state_tipo: ev?.tipo ?? null,
           applied_ciudad: ciudadFilter,
           applied_tipo: tipoFilter,
           limit: matchCount,
@@ -361,9 +369,8 @@ Cómo trabajas:
    - presupuesto → set_presupuesto (rango min/max en €, alguno puede ser null)
    - catering → set_catering (si/no/por_ver)
 3. Cuando tengas tipo + ciudad + personas, llama a search_venues y muestra resultados.
-   - SIEMPRE pasa el parámetro 'ciudad' si el evento ya tiene ciudad asignada (mira el estado de arriba).
-   - SIEMPRE pasa el parámetro 'tipo' si el evento ya tiene tipo asignado.
-   - Solo omítelos si el usuario pide explícitamente buscar en otra ciudad o tipo distinto.
+   - SIEMPRE pasa el parámetro 'ciudad' si el evento ya tiene ciudad asignada.
+   - NO pases el 'tipo' del evento (corporate, boda…) al search_venues. El parámetro 'tipo' de esa tool es el tipo del ESPACIO (sala, rooftop, restaurante…), una taxonomía distinta. Déjalo null salvo que el usuario pida explícitamente un tipo de espacio.
 4. Si menciona música en vivo, DJ, banda → llama a search_artists.
 5. Si el usuario expresa interés por un venue o artista concreto de los sugeridos, llama a select_venue / add_artist.
 6. NO inventes venues o artistas — solo usa los que devuelve la búsqueda.
