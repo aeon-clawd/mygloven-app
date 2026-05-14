@@ -962,7 +962,7 @@ body::before {
 .cal-day .n { font-weight: 600; color: var(--color-text-secondary); }
 .cal-day.muted .n { color: var(--color-text-muted); opacity: .4; }
 .cal-day .ev {
-  margin-top: 6px;
+  margin-top: 4px;
   font-family: var(--font-sans);
   font-size: 10px;
   background: var(--color-accent);
@@ -971,8 +971,19 @@ body::before {
   border-radius: var(--radius-sm);
   font-weight: 500;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  cursor: pointer;
+  border: none;
+  text-align: left;
+  display: block;
+  width: 100%;
 }
 .cal-day .ev.held { background: var(--color-surface-3); color: var(--color-text-secondary); }
+.cal-day .ev.borrador { background: var(--color-surface-3); color: var(--color-text-secondary); }
+.cal-day .ev.en_propuestas { background: rgba(250,204,21,.18); color: var(--color-warning); border: 1px solid rgba(250,204,21,.4); }
+.cal-day .ev.activo { background: var(--color-success); color: var(--color-text-inverse); }
+.cal-day .ev.cerrado { background: rgba(34,197,94,.18); color: var(--color-success); border: 1px solid rgba(34,197,94,.4); }
+.cal-day .ev.cancelado { background: rgba(255,59,59,.14); color: var(--color-error); border: 1px solid rgba(255,59,59,.35); text-decoration: line-through; }
+.cal-day .ev:hover { filter: brightness(1.1); }
 .cal-day.today .n { color: var(--color-accent); }
 
 /* ───────── Solicitud tile ───────── */
