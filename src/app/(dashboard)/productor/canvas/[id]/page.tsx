@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useChat } from "@ai-sdk/react";
@@ -196,6 +196,9 @@ function CanvasInner({
   setInput: (s: string) => void;
   onTurnFinished: () => void;
 }) {
+  const router = useRouter();
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const { messages, sendMessage, status } = useChat({
     messages: initialMessages,
     transport: new DefaultChatTransport({ api: `/api/eventos/${eventoId}/chat` }),
@@ -250,11 +253,41 @@ function CanvasInner({
     onTurnFinished();
   }
 
+  const isDraft = evento.estado === "borrador";
+  const isSent = evento.estado === "en_propuestas";
+  const canSend = isDraft && !!evento.venue_id && !submitting;
+
+  async function enviarSolicitudes() {
+    if (!canSend) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch(`/api/eventos/${eventoId}/enviar`, { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setSubmitError(body?.error || "No se pudo enviar la solicitud.");
+        return;
+      }
+      await onTurnFinished();
+      router.push("/productor/eventos");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const sendLabel = submitting
+    ? "Enviando…"
+    : isSent
+      ? "Solicitud enviada"
+      : !evento.venue_id
+        ? "Elige un espacio primero"
+        : "Enviar solicitud";
+
   return (
     <>
       <PageHead
         eyebrow="Canvas operativo"
-        title="Nuevo evento"
+        title={evento.titulo && evento.titulo !== "Evento sin título" ? evento.titulo : "Nuevo evento"}
         sub="Habla con my'G a la izquierda. El brief se rellena solo a la derecha — y tú puedes editar lo que quieras."
         actions={
           <>
@@ -277,8 +310,14 @@ function CanvasInner({
                 </button>
               ))}
             </div>
-            <Button variant="primary" disabled data-cursor="enviar →">
-              Enviar solicitudes <Icon.arrow />
+            <Button
+              variant="primary"
+              disabled={!canSend}
+              onClick={enviarSolicitudes}
+              data-cursor={canSend ? "enviar →" : undefined}
+              title={submitError ?? undefined}
+            >
+              {sendLabel} <Icon.arrow />
             </Button>
           </>
         }
@@ -647,8 +686,10 @@ function BriefPane({
   onClearVenue: () => void | Promise<void>;
   onRemoveArtist: (id: string) => void | Promise<void>;
 }) {
+  const hasTitle = !!evento.titulo && evento.titulo !== "Evento sin título";
   const filledCount = useMemo(() => {
     let n = 0;
+    if (hasTitle) n++;
     if (evento.tipo) n++;
     if (evento.ciudad) n++;
     if (evento.fecha_deseada) n++;
@@ -658,15 +699,21 @@ function BriefPane({
     if (evento.venue_id) n++;
     if ((evento.artistas_ids?.length ?? 0) > 0) n++;
     return n;
-  }, [evento]);
+  }, [evento, hasTitle]);
 
   return (
     <div className="canvas-pane">
       <div className="pane-head">
         <span className="lbl">— Brief estructurado</span>
-        <span className="text-mute">8 campos · {filledCount} completos</span>
+        <span className="text-mute">9 campos · {filledCount} completos</span>
       </div>
       <div className="canvas-data">
+        <BriefTextRow
+          label="Título"
+          value={hasTitle ? evento.titulo : ""}
+          placeholder="Ponle un nombre…"
+          onCommit={(v) => onPatch({ titulo: v.trim() || "Evento sin título" })}
+        />
         <BriefSelectRow
           label="Tipo"
           value={evento.tipo ?? ""}
@@ -708,6 +755,44 @@ function BriefPane({
         />
         <BriefVenueRow venue={venue} onClear={onClearVenue} />
         <BriefArtistsRow artistas={artistas} onRemove={onRemoveArtist} />
+      </div>
+    </div>
+  );
+}
+
+function BriefTextRow({
+  label,
+  value,
+  placeholder,
+  onCommit,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  onCommit: (v: string) => void;
+}) {
+  const [local, setLocal] = useState(value);
+  useEffect(() => {
+    setLocal(value);
+  }, [value]);
+  return (
+    <div className="brief-row">
+      <span className="lbl">— {label.toUpperCase()}</span>
+      <div className="brief-control">
+        <input
+          type="text"
+          value={local}
+          placeholder={placeholder}
+          onChange={(e) => setLocal(e.target.value)}
+          onBlur={() => {
+            if (local !== value) onCommit(local);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.currentTarget.blur();
+            }
+          }}
+        />
       </div>
     </div>
   );
