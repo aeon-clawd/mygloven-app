@@ -186,7 +186,10 @@ export function buildTools(supabase: SupabaseClient, eventoId: string) {
             tipo_filter: tipo ?? null,
             exterior_only: exterior_only ?? null,
           });
-          if (error) return { ok: false, error: error.message, results: [] };
+          if (error) {
+            console.error("[search_venues] rpc error", { error, query, ciudad, tipo });
+            return { ok: false, error: error.message, results: [] };
+          }
 
           // Hydrate with cover image so the card renderer doesn't need a 2nd fetch.
           const ids = (data ?? []).map((r: { id: string }) => r.id);
@@ -205,6 +208,7 @@ export function buildTools(supabase: SupabaseClient, eventoId: string) {
           }));
           return { ok: true, results };
         } catch (e) {
+          console.error("[search_venues] threw", { e, query, ciudad, tipo });
           return {
             ok: false,
             error: e instanceof Error ? e.message : String(e),
@@ -230,7 +234,10 @@ export function buildTools(supabase: SupabaseClient, eventoId: string) {
             match_count: limit,
             genero_filter: genero ?? null,
           });
-          if (error) return { ok: false, error: error.message, results: [] };
+          if (error) {
+            console.error("[search_artists] rpc error", { error, query, genero });
+            return { ok: false, error: error.message, results: [] };
+          }
 
           const ids = (data ?? []).map((r: { id: string }) => r.id);
           const { data: covers } = ids.length
@@ -254,6 +261,7 @@ export function buildTools(supabase: SupabaseClient, eventoId: string) {
           }));
           return { ok: true, results };
         } catch (e) {
+          console.error("[search_artists] threw", { e, query, genero });
           return {
             ok: false,
             error: e instanceof Error ? e.message : String(e),
