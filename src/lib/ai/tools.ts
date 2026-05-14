@@ -176,18 +176,38 @@ export function buildTools(supabase: SupabaseClient, eventoId: string) {
         limit: z.number().min(1).max(8).default(6),
       }),
       execute: async ({ query, ciudad, tipo, limit }) => {
-        console.log("[search_venues] called", { query, ciudad, tipo, limit });
+        // Fallback a los valores del evento si el LLM no los pasa.
+        const { data: ev } = await supabase
+          .from("eventos")
+          .select("ciudad, tipo")
+          .eq("id", eventoId)
+          .single();
+        const ciudadFilter = (ciudad ?? ev?.ciudad ?? null) || null;
+        const tipoFilter = (tipo ?? ev?.tipo ?? null) || null;
+        const matchCount = Math.max(limit ?? 6, 6);
+
+        console.log("[search_venues] called", {
+          query,
+          llm_ciudad: ciudad,
+          llm_tipo: tipo,
+          state_ciudad: ev?.ciudad ?? null,
+          state_tipo: ev?.tipo ?? null,
+          applied_ciudad: ciudadFilter,
+          applied_tipo: tipoFilter,
+          limit: matchCount,
+        });
+
         try {
           const embedding = await embedText(query);
           const { data, error } = await supabase.rpc("match_venues", {
             query_embedding: embedding,
-            match_count: limit,
-            ciudad_filter: ciudad ?? null,
-            tipo_filter: tipo ?? null,
+            match_count: matchCount,
+            ciudad_filter: ciudadFilter,
+            tipo_filter: tipoFilter,
             exterior_only: null,
           });
           if (error) {
-            console.error("[search_venues] rpc error", { error, query, ciudad, tipo });
+            console.error("[search_venues] rpc error", { error, query, ciudadFilter, tipoFilter });
             return { ok: false, error: error.message, results: [] };
           }
           console.log("[search_venues] rpc ok", { count: data?.length ?? 0 });
