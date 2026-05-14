@@ -1557,3 +1557,101 @@ body::before {
   filter: brightness(1.1);
   color: var(--color-text-inverse);
 }
+
+/* ───────── Space Studio ───────── */
+.studio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.studio-tile {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+  text-align: left;
+  display: flex; flex-direction: column;
+  cursor: pointer;
+  transition: border-color .15s ease;
+}
+.studio-tile:hover { border-color: var(--color-accent); }
+.studio-tile .ph {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: linear-gradient(135deg, #1c1410, #0a0a0a);
+  overflow: hidden;
+}
+.studio-tile .meta {
+  padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.studio-tile .meta .ttl {
+  font-family: var(--font-display);
+  font-size: 14px; font-weight: 600;
+  letter-spacing: -.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.studio-tile .meta .sub {
+  font-family: var(--font-mono);
+  font-size: 10px; color: var(--color-text-muted);
+  letter-spacing: 0.08em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.studio-stage {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+@media (max-width: 900px) {
+  .studio-stage { grid-template-columns: 1fr; }
+}
+.studio-base {
+  display: flex; flex-direction: column;
+  gap: 8px;
+}
+.studio-base .ph {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: linear-gradient(135deg, #1c1410, #0a0a0a);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+.studio-base .ph .generating {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: 16px;
+}
+.studio-base .meta {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.studio-base .meta .ttl {
+  font-family: var(--font-display);
+  font-size: 16px; font-weight: 600;
+}
+.studio-base .meta .sub {
+  font-family: var(--font-mono);
+  font-size: 10px; color: var(--color-text-muted);
+  letter-spacing: 0.08em;
+}
+.studio-prompt {
+  display: flex; flex-direction: column; gap: 10px;
+}
+.chip {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.chip:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}

@@ -1089,9 +1089,21 @@ function BriefVenueRow({
                   .join(" · ") || "—"}
               </span>
             </div>
-            <button type="button" onClick={onClear} data-cursor="quitar">
-              Quitar
-            </button>
+            <div className="flex-col" style={{ gap: 4 }}>
+              {venue.annex_id && (
+                <Link
+                  href={`/productor/space-studio?annex_id=${venue.annex_id}`}
+                  className="btn ghost"
+                  data-cursor="visualizar →"
+                  style={{ fontSize: 10, textAlign: "center" }}
+                >
+                  Visualizar
+                </Link>
+              )}
+              <button type="button" onClick={onClear} data-cursor="quitar">
+                Quitar
+              </button>
+            </div>
           </div>
         ) : (
           <div className="empty">Pídele a my&apos;G que sugiera espacios para elegir uno.</div>

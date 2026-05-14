@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -133,6 +134,15 @@ export function EventoDetailModal({
           <Button variant="ghost" onClick={onClose}>
             Cerrar
           </Button>
+          {evento && (
+            <Link
+              href={`/productor/space-studio?evento_id=${evento.id}`}
+              className="btn ghost"
+              data-cursor="visualizar →"
+            >
+              Visualizar espacio
+            </Link>
+          )}
           {evento && (
             <Button
               variant="primary"

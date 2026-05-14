@@ -4,6 +4,7 @@ import type { NavItem } from "@/components/layout/sidebar";
 const productorNav: NavItem[] = [
   { label: "Mis eventos", href: "/productor/eventos" },
   { label: "Explorar", href: "/productor/explorar" },
+  { label: "Space Studio", href: "/productor/space-studio" },
   { label: "Calendario", href: "/productor/calendario" },
   { label: "Tareas", href: "/productor/tareas" },
 ];
