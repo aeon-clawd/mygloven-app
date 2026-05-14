@@ -63,6 +63,7 @@ export async function updateSession(request: NextRequest) {
             admin: "/admin/panel",
             productor: "/productor/eventos",
             venue: "/espacio/home",
+            artista: "/artista/solicitudes",
           };
           url.pathname = roleRoutes[profile.rol] || "/productor/eventos";
         }

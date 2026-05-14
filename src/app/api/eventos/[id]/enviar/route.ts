@@ -17,7 +17,7 @@ export async function POST(
 
   const { data: ev, error: evErr } = await supabase
     .from("eventos")
-    .select("id, cliente_id, estado, venue_id, fecha_deseada, num_personas")
+    .select("id, cliente_id, estado, venue_id, fecha_deseada, num_personas, artistas_ids")
     .eq("id", id)
     .single();
   if (evErr || !ev) return new Response("Evento no encontrado", { status: 404 });
@@ -36,14 +36,14 @@ export async function POST(
     );
   }
 
-  const { data: existing } = await supabase
+  const { data: existingVenue } = await supabase
     .from("solicitudes")
     .select("id")
     .eq("evento_id", id)
     .eq("venue_id", ev.venue_id)
     .maybeSingle();
 
-  if (!existing) {
+  if (!existingVenue) {
     const { error: insErr } = await supabase.from("solicitudes").insert({
       evento_id: id,
       venue_id: ev.venue_id,
@@ -53,6 +53,31 @@ export async function POST(
       num_personas: ev.num_personas,
     });
     if (insErr) return new Response(insErr.message, { status: 500 });
+  }
+
+  const artistIds = (ev.artistas_ids as string[] | null) ?? [];
+  if (artistIds.length > 0) {
+    const { data: existingArt } = await supabase
+      .from("solicitudes_artistas")
+      .select("artista_id")
+      .eq("evento_id", id)
+      .in("artista_id", artistIds);
+    const sentTo = new Set((existingArt ?? []).map((r) => r.artista_id as string));
+    const toInsert = artistIds
+      .filter((aid) => !sentTo.has(aid))
+      .map((aid) => ({
+        evento_id: id,
+        artista_id: aid,
+        productor_id: user.id,
+        estado: "pendiente",
+        fecha_evento: ev.fecha_deseada,
+      }));
+    if (toInsert.length > 0) {
+      const { error: artErr } = await supabase
+        .from("solicitudes_artistas")
+        .insert(toInsert);
+      if (artErr) return new Response(artErr.message, { status: 500 });
+    }
   }
 
   const { error: updErr } = await supabase

@@ -143,6 +143,19 @@ export interface Solicitud {
   updated_at: string;
 }
 
+export interface SolicitudArtista {
+  id: string;
+  evento_id: string;
+  artista_id: string;
+  productor_id: string;
+  estado: EstadoSolicitud;
+  mensaje_productor: string | null;
+  respuesta_artista: string | null;
+  fecha_evento: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Candidatura {
   id: string;
   usuario_id: string;

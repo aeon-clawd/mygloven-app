@@ -6,15 +6,14 @@ import { PageHead } from "@/components/ui/page-head";
 import { Stat } from "@/components/ui/stat";
 import { createClient } from "@/lib/supabase/client";
 
-interface EventoConfirmadoRow {
+interface EventoArtistaRow {
   solicitud_id: string;
-  estado_solicitud: string;
   fecha_evento: string | null;
-  num_personas: number | null;
-  venue_nombre: string;
+  artista_nombre: string;
   evento_id: string;
   evento_titulo: string;
   evento_tipo: string | null;
+  evento_ciudad: string | null;
   evento_estado: string;
   productor_nombre: string | null;
 }
@@ -44,45 +43,45 @@ function unwrap<T>(rel: T | T[] | null | undefined): T | null {
   return Array.isArray(rel) ? rel[0] ?? null : rel;
 }
 
-export default function EspacioEventosPage() {
-  const [rows, setRows] = useState<EventoConfirmadoRow[]>([]);
+export default function ArtistaEventosPage() {
+  const [rows, setRows] = useState<EventoArtistaRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       const supabase = createClient();
       const { data } = await supabase
-        .from("solicitudes")
+        .from("solicitudes_artistas")
         .select(
-          `id, estado, fecha_evento, num_personas,
-           venue:venues!solicitudes_venue_id_fkey(nombre),
-           evento:eventos!solicitudes_evento_id_fkey(
-             id, titulo, tipo, estado,
+          `id, estado, fecha_evento,
+           artista:artistas!solicitudes_artistas_artista_id_fkey(nombre),
+           evento:eventos!solicitudes_artistas_evento_id_fkey(
+             id, titulo, tipo, ciudad, estado,
              cliente:profiles!eventos_cliente_id_fkey(nombre)
            )`
         )
         .eq("estado", "aceptada")
         .order("fecha_evento", { ascending: true });
 
-      const mapped: EventoConfirmadoRow[] = (data ?? []).map((s) => {
-        const venue = unwrap(s.venue) as { nombre: string } | null;
+      const mapped: EventoArtistaRow[] = (data ?? []).map((s) => {
+        const artista = unwrap(s.artista) as { nombre: string } | null;
         const ev = unwrap(s.evento) as {
           id: string;
           titulo: string;
           tipo: string | null;
+          ciudad: string | null;
           estado: string;
           cliente: { nombre: string } | { nombre: string }[] | null;
         } | null;
         const cliente = unwrap(ev?.cliente);
         return {
           solicitud_id: s.id as string,
-          estado_solicitud: s.estado as string,
           fecha_evento: s.fecha_evento as string | null,
-          num_personas: s.num_personas as number | null,
-          venue_nombre: venue?.nombre || "—",
+          artista_nombre: artista?.nombre || "—",
           evento_id: ev?.id || "",
           evento_titulo: ev?.titulo || "—",
           evento_tipo: ev?.tipo ?? null,
+          evento_ciudad: ev?.ciudad ?? null,
           evento_estado: ev?.estado || "—",
           productor_nombre: cliente?.nombre ?? null,
         };
@@ -100,9 +99,9 @@ export default function EspacioEventosPage() {
   return (
     <>
       <PageHead
-        eyebrow="Tu cartelera"
+        eyebrow="Tu agenda"
         title="Mis eventos"
-        sub="Eventos confirmados y en proceso en tu espacio."
+        sub="Eventos confirmados en los que tocarás."
       />
 
       <div className="card-grid cols-3" style={{ marginBottom: 32 }}>
@@ -132,11 +131,7 @@ export default function EspacioEventosPage() {
               <div>
                 <div className="ttl">{r.evento_titulo}</div>
                 <div className="sub">
-                  {[
-                    r.venue_nombre,
-                    r.num_personas ? `${r.num_personas} pax` : null,
-                    r.evento_tipo,
-                  ]
+                  {[r.evento_ciudad, r.evento_tipo, r.artista_nombre]
                     .filter(Boolean)
                     .join(" · ") || "—"}
                 </div>

@@ -11,20 +11,20 @@ import { createClient } from "@/lib/supabase/client";
 const filtros = ["pendiente", "aceptada", "rechazada", "todas"] as const;
 type Filtro = (typeof filtros)[number];
 
-interface SolicitudRow {
+interface SolicitudArtistaRow {
   id: string;
   estado: string;
   fecha_evento: string | null;
-  num_personas: number | null;
   mensaje_productor: string | null;
-  respuesta_espacio: string | null;
+  respuesta_artista: string | null;
   created_at: string;
-  venue: { nombre: string; ciudad: string | null } | null;
+  artista: { nombre: string } | null;
   evento: {
     id: string;
     titulo: string;
     tipo: string | null;
     ciudad: string | null;
+    num_personas: number | null;
     presupuesto_min: number | null;
     presupuesto_max: number | null;
     cliente: { nombre: string; email: string } | null;
@@ -56,11 +56,11 @@ function unwrap<T>(rel: T | T[] | null | undefined): T | null {
   return Array.isArray(rel) ? rel[0] ?? null : rel;
 }
 
-export default function EspacioSolicitudesPage() {
+export default function ArtistaSolicitudesPage() {
   const [filtro, setFiltro] = useState<Filtro>("pendiente");
-  const [rows, setRows] = useState<SolicitudRow[]>([]);
+  const [rows, setRows] = useState<SolicitudArtistaRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<SolicitudRow | null>(null);
+  const [selected, setSelected] = useState<SolicitudArtistaRow | null>(null);
   const [decision, setDecision] = useState<"aceptada" | "rechazada" | null>(null);
   const [mensaje, setMensaje] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -69,23 +69,24 @@ export default function EspacioSolicitudesPage() {
   async function load() {
     const supabase = createClient();
     const { data } = await supabase
-      .from("solicitudes")
+      .from("solicitudes_artistas")
       .select(
-        `id, estado, fecha_evento, num_personas, mensaje_productor, respuesta_espacio, created_at,
-         venue:venues!solicitudes_venue_id_fkey(nombre, ciudad),
-         evento:eventos!solicitudes_evento_id_fkey(
-           id, titulo, tipo, ciudad, presupuesto_min, presupuesto_max,
+        `id, estado, fecha_evento, mensaje_productor, respuesta_artista, created_at,
+         artista:artistas!solicitudes_artistas_artista_id_fkey(nombre),
+         evento:eventos!solicitudes_artistas_evento_id_fkey(
+           id, titulo, tipo, ciudad, num_personas, presupuesto_min, presupuesto_max,
            cliente:profiles!eventos_cliente_id_fkey(nombre, email)
          )`
       )
       .order("created_at", { ascending: false });
 
-    const mapped: SolicitudRow[] = (data ?? []).map((s) => {
+    const mapped: SolicitudArtistaRow[] = (data ?? []).map((s) => {
       const evRaw = unwrap(s.evento) as {
         id: string;
         titulo: string;
         tipo: string | null;
         ciudad: string | null;
+        num_personas: number | null;
         presupuesto_min: number | null;
         presupuesto_max: number | null;
         cliente: { nombre: string; email: string }[] | { nombre: string; email: string } | null;
@@ -94,17 +95,17 @@ export default function EspacioSolicitudesPage() {
         id: s.id as string,
         estado: s.estado as string,
         fecha_evento: s.fecha_evento as string | null,
-        num_personas: s.num_personas as number | null,
         mensaje_productor: s.mensaje_productor as string | null,
-        respuesta_espacio: s.respuesta_espacio as string | null,
+        respuesta_artista: s.respuesta_artista as string | null,
         created_at: s.created_at as string,
-        venue: unwrap(s.venue) as { nombre: string; ciudad: string | null } | null,
+        artista: unwrap(s.artista) as { nombre: string } | null,
         evento: evRaw
           ? {
               id: evRaw.id,
               titulo: evRaw.titulo,
               tipo: evRaw.tipo,
               ciudad: evRaw.ciudad,
+              num_personas: evRaw.num_personas,
               presupuesto_min: evRaw.presupuesto_min,
               presupuesto_max: evRaw.presupuesto_max,
               cliente: unwrap(evRaw.cliente),
@@ -127,7 +128,7 @@ export default function EspacioSolicitudesPage() {
     rechazada: rows.filter((r) => r.estado === "rechazada").length,
   };
 
-  function openDetail(s: SolicitudRow) {
+  function openDetail(s: SolicitudArtistaRow) {
     setSelected(s);
     setDecision(null);
     setMensaje("");
@@ -143,7 +144,7 @@ export default function EspacioSolicitudesPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/solicitudes/${selected.id}/responder`, {
+      const res = await fetch(`/api/solicitudes-artistas/${selected.id}/responder`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ decision, mensaje: mensaje.trim() || undefined }),
@@ -163,9 +164,9 @@ export default function EspacioSolicitudesPage() {
   return (
     <>
       <PageHead
-        eyebrow="Quién quiere tu espacio"
+        eyebrow="Quién te quiere tocando"
         title="Solicitudes"
-        sub="Cada productor que pidió tu espacio. Datos completos del evento. Decide en tres clics."
+        sub="Productores que te quieren para sus eventos. Decide y deja tu nota."
       />
 
       <div className="card-grid cols-3" style={{ marginBottom: 32 }}>
@@ -200,7 +201,7 @@ export default function EspacioSolicitudesPage() {
           <div className="num">0</div>
           <div className="msg">Sin solicitudes</div>
           <span className="text-mute">
-            Cuando lleguen solicitudes para tu espacio, aparecerán aquí.
+            Cuando un productor te quiera para un evento, aparecerá aquí.
           </span>
         </div>
       ) : (
@@ -219,13 +220,13 @@ export default function EspacioSolicitudesPage() {
                 <div className="ttl">
                   {r.evento?.titulo || "—"}{" "}
                   <span className="text-mute" style={{ fontSize: 13, marginLeft: 6 }}>
-                    en {r.venue?.nombre || "—"}
+                    como {r.artista?.nombre || "—"}
                   </span>
                 </div>
                 <div className="sub">
                   {[
                     r.evento?.cliente?.nombre,
-                    r.num_personas ? `${r.num_personas} pax` : null,
+                    r.evento?.ciudad,
                     r.evento?.tipo,
                   ]
                     .filter(Boolean)
@@ -292,7 +293,7 @@ export default function EspacioSolicitudesPage() {
         {selected && (
           <div className="flex-col">
             <div className="card-grid cols-2" style={{ borderRadius: 4 }}>
-              <DetailField label="Espacio" value={selected.venue?.nombre || "—"} />
+              <DetailField label="Artista" value={selected.artista?.nombre || "—"} />
               <DetailField
                 label="Productor"
                 value={
@@ -318,7 +319,9 @@ export default function EspacioSolicitudesPage() {
               />
               <DetailField
                 label="Pax"
-                value={selected.num_personas ? String(selected.num_personas) : "—"}
+                value={
+                  selected.evento?.num_personas ? String(selected.evento.num_personas) : "—"
+                }
               />
               <DetailField
                 label="Presupuesto"
@@ -344,14 +347,14 @@ export default function EspacioSolicitudesPage() {
               </>
             )}
 
-            {selected.respuesta_espacio && (
+            {selected.respuesta_artista && (
               <>
                 <hr className="hr" />
                 <div>
                   <div className="text-mute" style={{ marginBottom: 6 }}>
                     TU RESPUESTA
                   </div>
-                  <div>{selected.respuesta_espacio}</div>
+                  <div>{selected.respuesta_artista}</div>
                 </div>
               </>
             )}
@@ -372,7 +375,7 @@ export default function EspacioSolicitudesPage() {
                     rows={4}
                     placeholder={
                       decision === "rechazada"
-                        ? "Explica al productor por qué no es viable…"
+                        ? "Explica al productor por qué no puedes…"
                         : "Algo que quieras decir al productor…"
                     }
                   />
