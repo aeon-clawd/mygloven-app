@@ -177,6 +177,7 @@ export function buildTools(supabase: SupabaseClient, eventoId: string) {
         limit: z.number().min(1).max(8).default(4),
       }),
       execute: async ({ query, ciudad, tipo, exterior_only, limit }) => {
+        console.log("[search_venues] called", { query, ciudad, tipo, exterior_only, limit });
         try {
           const embedding = await embedText(query);
           const { data, error } = await supabase.rpc("match_venues", {
@@ -227,6 +228,7 @@ export function buildTools(supabase: SupabaseClient, eventoId: string) {
         limit: z.number().min(1).max(8).default(4),
       }),
       execute: async ({ query, genero, limit }) => {
+        console.log("[search_artists] called", { query, genero, limit });
         try {
           const embedding = await embedText(query);
           const { data, error } = await supabase.rpc("match_artistas", {
