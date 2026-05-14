@@ -5,8 +5,8 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { PageHead } from "@/components/ui/page-head";
 import { Button } from "@/components/ui/button";
-import { Pill } from "@/components/ui/badge";
 import { Icon } from "@/components/ui/icon";
+import { Modal } from "@/components/ui/modal";
 import { createClient } from "@/lib/supabase/client";
 
 interface PhotoTile {
@@ -31,6 +31,17 @@ interface RenderRow {
   venue_annex_id: string | null;
 }
 
+const QUICK_CHIPS = [
+  "Mesa cóctel",
+  "Escenario / DJ",
+  "Barra",
+  "Plantas",
+  "Luces cálidas",
+  "Decoración floral",
+  "Pantalla LED",
+  "Sillas y mesas redondas",
+];
+
 function principalUrl(images: unknown): string | null {
   const arr = (images as { url: string; tag?: string }[] | null) ?? [];
   if (arr.length === 0) return null;
@@ -42,54 +53,60 @@ function unwrap<T>(rel: T | T[] | null | undefined): T | null {
   return Array.isArray(rel) ? rel[0] ?? null : rel;
 }
 
-type Tab = "catalogo" | "eventos";
-type Step = "pick" | "prompt" | "result";
+type PickerTab = "catalogo" | "eventos";
 
 export default function SpaceStudioPage() {
   const params = useSearchParams();
   const presetAnnex = params.get("annex_id");
   const presetEvento = params.get("evento_id");
 
-  const [tab, setTab] = useState<Tab>("catalogo");
-  const [step, setStep] = useState<Step>("pick");
   const [picked, setPicked] = useState<PhotoTile | null>(null);
 
+  // Catalog/events for the picker modal
   const [catalogo, setCatalogo] = useState<PhotoTile[]>([]);
   const [misEventos, setMisEventos] = useState<PhotoTile[]>([]);
   const [loadingCat, setLoadingCat] = useState(true);
   const [loadingEv, setLoadingEv] = useState(true);
-  const [search, setSearch] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerTab, setPickerTab] = useState<PickerTab>("catalogo");
+  const [pickerSearch, setPickerSearch] = useState("");
 
+  // Prompt state
   const [prompt, setPrompt] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loadingSug, setLoadingSug] = useState(false);
 
+  // Generation state
   const [generating, setGenerating] = useState(false);
-  const [renderUrl, setRenderUrl] = useState<string | null>(null);
-  const [renderId, setRenderId] = useState<string | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [current, setCurrent] = useState<RenderRow | null>(null);
 
-  const [gallery, setGallery] = useState<RenderRow[]>([]);
+  // History thumbnails (renders for the current picked base url)
+  const [history, setHistory] = useState<RenderRow[]>([]);
 
-  const loadGallery = useCallback(async () => {
+  const loadHistory = useCallback(async (baseUrl: string | null) => {
+    if (!baseUrl) {
+      setHistory([]);
+      return;
+    }
     const supabase = createClient();
     const { data } = await supabase
       .from("space_studio_renders")
       .select(
         "id, prompt, base_image_url, output_image_url, status, error_message, created_at, evento_id, venue_annex_id"
       )
+      .eq("base_image_url", baseUrl)
       .order("created_at", { ascending: false })
-      .limit(24);
-    setGallery((data ?? []) as RenderRow[]);
+      .limit(20);
+    const rows = (data ?? []) as RenderRow[];
+    setHistory(rows);
+    const firstReady = rows.find((r) => r.status === "listo" && r.output_image_url);
+    setCurrent((cur) => cur ?? firstReady ?? null);
   }, []);
 
+  // Catalog
   useEffect(() => {
-    loadGallery();
-  }, [loadGallery]);
-
-  // Catalog: all active annexes with their parent venue info
-  useEffect(() => {
-    async function loadCat() {
+    async function load() {
       const supabase = createClient();
       const { data } = await supabase
         .from("venue_annexes")
@@ -101,13 +118,10 @@ export default function SpaceStudioPage() {
         id: string;
         nombre: string;
         images: unknown;
-        venue: {
-          id: string;
-          nombre: string;
-          ciudad: string | null;
-          images: unknown;
-          estado: string;
-        } | { id: string; nombre: string; ciudad: string | null; images: unknown; estado: string }[] | null;
+        venue:
+          | { id: string; nombre: string; ciudad: string | null; images: unknown; estado: string }
+          | { id: string; nombre: string; ciudad: string | null; images: unknown; estado: string }[]
+          | null;
       }>) {
         const venue = unwrap(a.venue);
         if (!venue || venue.estado !== "activo") continue;
@@ -125,17 +139,17 @@ export default function SpaceStudioPage() {
       setCatalogo(tiles);
       setLoadingCat(false);
     }
-    loadCat();
+    load();
   }, []);
 
-  // Mis eventos: eventos that have annex/venue selected, show their photo
+  // Mis eventos
   useEffect(() => {
-    async function loadEv() {
+    async function load() {
       const supabase = createClient();
       const { data } = await supabase
         .from("eventos")
         .select(
-          `id, titulo, fecha_deseada, estado, venue_id, venue_annex_id,
+          `id, titulo, venue_id, venue_annex_id,
            venue:venues!eventos_venue_id_fkey(nombre, ciudad, images),
            annex:venue_annexes!eventos_venue_annex_id_fkey(nombre, images)`
         )
@@ -146,8 +160,6 @@ export default function SpaceStudioPage() {
       for (const e of (data ?? []) as Array<{
         id: string;
         titulo: string;
-        fecha_deseada: string | null;
-        estado: string;
         venue_id: string;
         venue_annex_id: string | null;
         venue: { nombre: string; ciudad: string | null; images: unknown } | { nombre: string; ciudad: string | null; images: unknown }[] | null;
@@ -155,8 +167,7 @@ export default function SpaceStudioPage() {
       }>) {
         const venue = unwrap(e.venue);
         const annex = unwrap(e.annex);
-        const url =
-          principalUrl(annex?.images) ?? principalUrl(venue?.images) ?? null;
+        const url = principalUrl(annex?.images) ?? principalUrl(venue?.images);
         if (!url) continue;
         const where = annex?.nombre
           ? `${annex.nombre} · ${venue?.nombre ?? ""}`
@@ -174,37 +185,44 @@ export default function SpaceStudioPage() {
       setMisEventos(tiles);
       setLoadingEv(false);
     }
-    loadEv();
+    load();
   }, []);
 
-  // Preselect from query params after lists load.
+  // Preselect from query params
   useEffect(() => {
     if (picked) return;
     if (presetEvento) {
       const t = misEventos.find((x) => x.evento_id === presetEvento);
       if (t) {
-        setTab("eventos");
         setPicked(t);
-        setStep("prompt");
+        setPickerTab("eventos");
       }
     } else if (presetAnnex) {
       const t = catalogo.find((x) => x.annex_id === presetAnnex);
       if (t) {
-        setTab("catalogo");
         setPicked(t);
-        setStep("prompt");
+        setPickerTab("catalogo");
       }
     }
-  }, [presetEvento, presetAnnex, misEventos, catalogo, picked]);
+  }, [presetEvento, presetAnnex, catalogo, misEventos, picked]);
+
+  // Refresh history when the picked base url changes
+  useEffect(() => {
+    setCurrent(null);
+    loadHistory(picked?.url ?? null);
+  }, [picked?.url, loadHistory]);
 
   const filteredCat = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = pickerSearch.trim().toLowerCase();
     if (!q) return catalogo;
     return catalogo.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) || t.subtitle.toLowerCase().includes(q)
+      (t) => t.title.toLowerCase().includes(q) || t.subtitle.toLowerCase().includes(q)
     );
-  }, [catalogo, search]);
+  }, [catalogo, pickerSearch]);
+
+  function appendChip(text: string) {
+    setPrompt((cur) => (cur.trim().length === 0 ? text : `${cur.trim()}, ${text}`));
+  }
 
   async function fetchSuggestions() {
     if (!picked || loadingSug) return;
@@ -230,9 +248,6 @@ export default function SpaceStudioPage() {
     if (!picked || !prompt.trim() || generating) return;
     setGenerating(true);
     setRenderError(null);
-    setRenderUrl(null);
-    setRenderId(null);
-    setStep("result");
     try {
       const res = await fetch("/api/space-studio/render", {
         method: "POST",
@@ -254,9 +269,19 @@ export default function SpaceStudioPage() {
       if (!json.ok || !json.output_image_url) {
         setRenderError(json.error ?? "No se pudo generar la imagen.");
       } else {
-        setRenderUrl(json.output_image_url);
-        setRenderId(json.id ?? null);
-        await loadGallery();
+        await loadHistory(picked.url);
+        // Optimistically show the just-finished render as current.
+        setCurrent({
+          id: json.id ?? "",
+          prompt: prompt.trim(),
+          base_image_url: picked.url,
+          output_image_url: json.output_image_url,
+          status: "listo",
+          error_message: null,
+          created_at: new Date().toISOString(),
+          evento_id: picked.evento_id ?? null,
+          venue_annex_id: picked.annex_id ?? null,
+        });
       }
     } catch (e) {
       setRenderError(e instanceof Error ? e.message : String(e));
@@ -265,152 +290,109 @@ export default function SpaceStudioPage() {
     }
   }
 
-  function reset() {
-    setPicked(null);
-    setPrompt("");
-    setSuggestions([]);
-    setRenderUrl(null);
-    setRenderError(null);
-    setRenderId(null);
-    setStep("pick");
-  }
-
-  function startOver() {
-    setRenderUrl(null);
-    setRenderError(null);
-    setRenderId(null);
-    setStep("prompt");
-  }
-
-  const tiles = tab === "catalogo" ? filteredCat : misEventos;
-  const loadingTiles = tab === "catalogo" ? loadingCat : loadingEv;
-
   return (
     <>
       <PageHead
         eyebrow="my'G — visualiza antes de firmar"
         title="Space Studio"
-        sub="Elige una foto del espacio, describe cómo lo quieres y la IA te lo monta. Antes de hablar con un solo proveedor."
-        actions={
-          <div className="segmented">
-            {(["pick", "prompt", "result"] as Step[]).map((s, i) => (
-              <button
-                key={s}
-                type="button"
-                className={step === s ? "active" : ""}
-                onClick={() => {
-                  if (s === "pick") reset();
-                }}
-                data-cursor={s === "pick" ? "volver a elegir" : undefined}
-                disabled={s !== "pick" && (step === "pick" || (s === "result" && !renderUrl && !generating && !renderError))}
-              >
-                {`0${i + 1} / 03`}
-              </button>
-            ))}
-          </div>
-        }
+        sub="Elige una foto del espacio, descríbelo y la IA te lo muestra montado."
       />
 
-      {step === "pick" && (
-        <>
-          <div className="flex-row between" style={{ marginBottom: 24 }}>
-            <div className="segmented">
+      <div className="studio-board">
+        {/* ── Columna izquierda ── */}
+        <div className="studio-col left">
+          <Section
+            num="1"
+            title="Foto del espacio"
+            sub="Imagen real del espacio cargada en my'G"
+          >
+            {picked ? (
+              <>
+                <div className="studio-photo">
+                  <Image src={picked.url} alt={picked.title} fill style={{ objectFit: "cover" }} unoptimized />
+                </div>
+                <div className="flex-row between" style={{ marginTop: 8 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontFamily: "var(--font-display)",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {picked.title}
+                    </div>
+                    <div
+                      className="text-mute"
+                      style={{
+                        fontSize: 11,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {picked.subtitle}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={() => setPickerOpen(true)}
+                    data-cursor="cambiar"
+                  >
+                    <Icon.edit /> Cambiar foto
+                  </button>
+                </div>
+              </>
+            ) : (
               <button
                 type="button"
-                className={tab === "catalogo" ? "active" : ""}
-                onClick={() => setTab("catalogo")}
-                data-cursor="cambiar tab"
+                className="studio-photo studio-photo-empty"
+                onClick={() => setPickerOpen(true)}
+                data-cursor="elegir →"
               >
-                Desde el catálogo
+                <span>Elige una foto del espacio</span>
+                <span className="text-mute" style={{ fontSize: 11, marginTop: 4 }}>
+                  De catálogo o de tus eventos
+                </span>
               </button>
-              <button
-                type="button"
-                className={tab === "eventos" ? "active" : ""}
-                onClick={() => setTab("eventos")}
-                data-cursor="cambiar tab"
-              >
-                Desde mis eventos
-              </button>
-            </div>
-            {tab === "catalogo" && (
-              <input
-                className="input"
-                placeholder="Buscar espacio…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ maxWidth: 280 }}
-              />
             )}
-          </div>
+          </Section>
 
-          {loadingTiles ? (
-            <div className="empty">
-              <div className="msg">Cargando…</div>
-            </div>
-          ) : tiles.length === 0 ? (
-            <div className="empty">
-              <div className="num">0</div>
-              <div className="msg">
-                {tab === "catalogo"
-                  ? "Sin espacios con foto"
-                  : "Aún no tienes eventos con espacio elegido"}
-              </div>
-            </div>
-          ) : (
-            <div className="studio-grid">
-              {tiles.map((t) => (
-                <button
-                  key={t.key}
-                  type="button"
-                  className="studio-tile"
-                  data-cursor="elegir →"
-                  onClick={() => {
-                    setPicked(t);
-                    setStep("prompt");
-                  }}
-                >
-                  <div className="ph">
-                    <Image src={t.url} alt={t.title} fill style={{ objectFit: "cover" }} unoptimized />
-                  </div>
-                  <div className="meta">
-                    <span className="ttl">{t.title}</span>
-                    <span className="sub">{t.subtitle}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {step === "prompt" && picked && (
-        <div className="studio-stage">
-          <div className="studio-base">
-            <div className="ph">
-              <Image src={picked.url} alt={picked.title} fill style={{ objectFit: "cover" }} unoptimized />
-            </div>
-            <div className="meta">
-              <span className="ttl">{picked.title}</span>
-              <span className="sub">{picked.subtitle}</span>
-            </div>
-            <button type="button" className="btn ghost" onClick={reset} data-cursor="cambiar">
-              <Icon.arrowLeft /> Elegir otra foto
-            </button>
-          </div>
-          <div className="studio-prompt">
-            <label className="text-mute">DESCRIBE CÓMO LO QUIERES MONTADO</label>
+          <Section
+            num="2"
+            title="Describe cómo quieres imaginar este espacio"
+            sub="Cuéntanos qué elementos necesitas y cómo te gustaría que se vea."
+          >
             <textarea
               className="input"
               rows={6}
               value={prompt}
-              placeholder="Ej. Cena corporativa con mesas redondas para 10, iluminación cálida, decoración mediterránea, escenario al fondo."
+              placeholder="Ej. Cena corporativa con mesas redondas para 10, iluminación cálida, escenario al fondo…"
               onChange={(e) => setPrompt(e.target.value)}
             />
-            <div className="flex-row" style={{ gap: 8, justifyContent: "space-between" }}>
+            <div className="studio-chips" style={{ marginTop: 8 }}>
+              {QUICK_CHIPS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className="chip"
+                  onClick={() => appendChip(c)}
+                  data-cursor="añadir"
+                >
+                  + {c}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex-row" style={{ gap: 8, marginTop: 12 }}>
               <Button
                 variant="ghost"
                 onClick={fetchSuggestions}
-                disabled={loadingSug}
+                disabled={!picked || loadingSug}
                 data-cursor="sugerir"
               >
                 {loadingSug ? "Pensando…" : "Sugiéreme ideas"}
@@ -418,127 +400,206 @@ export default function SpaceStudioPage() {
               <Button
                 variant="primary"
                 onClick={generate}
-                disabled={!prompt.trim() || generating}
+                disabled={!picked || !prompt.trim() || generating}
                 data-cursor="generar →"
+                full
               >
-                Generar visualización <Icon.arrow />
+                {generating ? "Generando…" : "Generar imagen con IA"} <Icon.arrow />
               </Button>
             </div>
+
             {suggestions.length > 0 && (
-              <div className="flex-col" style={{ gap: 6 }}>
-                <span className="text-mute">SUGERENCIAS</span>
+              <div className="flex-col" style={{ gap: 6, marginTop: 12 }}>
+                <span className="text-mute" style={{ fontSize: 10 }}>
+                  SUGERENCIAS
+                </span>
                 {suggestions.map((s, i) => (
                   <button
                     key={i}
                     type="button"
                     className="chip"
-                    data-cursor="usar"
+                    style={{ textAlign: "left", width: "100%" }}
                     onClick={() => setPrompt(s)}
-                    style={{ textAlign: "left" }}
+                    data-cursor="usar"
                   >
                     {s}
                   </button>
                 ))}
               </div>
             )}
-          </div>
+          </Section>
         </div>
-      )}
 
-      {step === "result" && picked && (
-        <div className="studio-stage">
-          <div className="studio-base">
-            <span className="text-mute">ANTES</span>
-            <div className="ph">
-              <Image src={picked.url} alt="base" fill style={{ objectFit: "cover" }} unoptimized />
-            </div>
-          </div>
-          <div className="studio-base">
-            <span className="text-mute">DESPUÉS</span>
-            <div className="ph">
+        {/* ── Columna derecha ── */}
+        <div className="studio-col right">
+          <Section
+            num="3"
+            title="Visualización generada por IA"
+            sub="Así se vería tu espacio con los elementos que has pedido."
+            action={
+              current?.output_image_url && !generating ? (
+                <Button
+                  variant="ghost"
+                  onClick={generate}
+                  disabled={!prompt.trim() || generating}
+                  data-cursor="regenerar"
+                >
+                  <Icon.arrow /> Regenerar
+                </Button>
+              ) : undefined
+            }
+          >
+            <div className="studio-render">
               {generating ? (
                 <div className="generating">Generando… esto tarda unos 20–40s.</div>
-              ) : renderUrl ? (
-                <Image src={renderUrl} alt="render" fill style={{ objectFit: "cover" }} unoptimized />
+              ) : current?.output_image_url ? (
+                <Image
+                  src={current.output_image_url}
+                  alt="render"
+                  fill
+                  style={{ objectFit: "cover" }}
+                  unoptimized
+                />
               ) : renderError ? (
                 <div className="generating" style={{ color: "var(--color-error)" }}>
                   {renderError}
                 </div>
-              ) : null}
+              ) : (
+                <div className="generating">
+                  {picked
+                    ? "Describe el montaje y dale a Generar."
+                    : "Elige una foto para empezar."}
+                </div>
+              )}
             </div>
-            <div className="flex-row" style={{ gap: 8, marginTop: 12 }}>
-              <Button variant="ghost" onClick={startOver} data-cursor="otro prompt">
-                Cambiar prompt
-              </Button>
-              <Button
-                variant="primary"
-                onClick={generate}
-                disabled={generating || !prompt.trim()}
-                data-cursor="regenerar"
-              >
-                Regenerar
-              </Button>
-            </div>
-            {renderId && renderUrl && (
-              <a
-                href={renderUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-mute"
-                style={{ marginTop: 8, display: "inline-block" }}
-              >
-                Abrir en grande ↗
-              </a>
+
+            {history.length > 0 && (
+              <div className="studio-history">
+                {history.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    className={`thumb ${current?.id === r.id ? "active" : ""}`}
+                    onClick={() => setCurrent(r)}
+                    title={r.prompt}
+                    data-cursor="ver"
+                    disabled={!r.output_image_url}
+                  >
+                    {r.output_image_url ? (
+                      <Image
+                        src={r.output_image_url}
+                        alt={r.prompt}
+                        fill
+                        style={{ objectFit: "cover" }}
+                        unoptimized
+                      />
+                    ) : (
+                      <span className="text-mute" style={{ fontSize: 9 }}>
+                        {r.status}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
             )}
+          </Section>
+        </div>
+      </div>
+
+      <Modal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        title="Elige una foto del espacio"
+      >
+        <div className="flex-row between" style={{ marginBottom: 16 }}>
+          <div className="segmented">
+            <button
+              type="button"
+              className={pickerTab === "catalogo" ? "active" : ""}
+              onClick={() => setPickerTab("catalogo")}
+              data-cursor="tab"
+            >
+              Catálogo
+            </button>
+            <button
+              type="button"
+              className={pickerTab === "eventos" ? "active" : ""}
+              onClick={() => setPickerTab("eventos")}
+              data-cursor="tab"
+            >
+              Mis eventos
+            </button>
           </div>
+          {pickerTab === "catalogo" && (
+            <input
+              className="input"
+              placeholder="Buscar espacio…"
+              value={pickerSearch}
+              onChange={(e) => setPickerSearch(e.target.value)}
+              style={{ maxWidth: 240 }}
+            />
+          )}
         </div>
-      )}
 
-      <hr className="hr" />
-
-      <div>
-        <div className="flex-row between" style={{ marginBottom: 12 }}>
-          <span className="page-eyebrow">— Tu galería</span>
-          <span className="text-mute">{gallery.length} renders</span>
-        </div>
-        {gallery.length === 0 ? (
+        {(pickerTab === "catalogo" ? loadingCat : loadingEv) ? (
           <div className="empty">
-            <div className="msg">Aún no has generado ninguna visualización.</div>
+            <div className="msg">Cargando…</div>
           </div>
         ) : (
           <div className="studio-grid">
-            {gallery.map((r) => (
-              <div key={r.id} className="studio-tile" style={{ cursor: "default" }}>
+            {(pickerTab === "catalogo" ? filteredCat : misEventos).map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                className="studio-tile"
+                data-cursor="elegir →"
+                onClick={() => {
+                  setPicked(t);
+                  setPickerOpen(false);
+                  setPickerSearch("");
+                }}
+              >
                 <div className="ph">
-                  {r.output_image_url ? (
-                    <Image src={r.output_image_url} alt={r.prompt} fill style={{ objectFit: "cover" }} unoptimized />
-                  ) : (
-                    <div className="generating">{r.status}</div>
-                  )}
+                  <Image src={t.url} alt={t.title} fill style={{ objectFit: "cover" }} unoptimized />
                 </div>
                 <div className="meta">
-                  <span className="sub" title={r.prompt}>
-                    {r.prompt.slice(0, 80)}
-                    {r.prompt.length > 80 ? "…" : ""}
-                  </span>
-                  <Pill
-                    variant={
-                      r.status === "listo"
-                        ? "success"
-                        : r.status === "error"
-                          ? "error"
-                          : "warning"
-                    }
-                    dot
-                  >
-                    {r.status}
-                  </Pill>
+                  <span className="ttl">{t.title}</span>
+                  <span className="sub">{t.subtitle}</span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
-      </div>
+      </Modal>
     </>
+  );
+}
+
+function Section({
+  num,
+  title,
+  sub,
+  action,
+  children,
+}: {
+  num: string;
+  title: string;
+  sub: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="studio-section">
+      <div className="head">
+        <div>
+          <div className="step">
+            <span className="num">{num}.</span> {title}
+          </div>
+          <div className="sub">{sub}</div>
+        </div>
+        {action}
+      </div>
+      <div className="body">{children}</div>
+    </section>
   );
 }
