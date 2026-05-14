@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { PageHead } from "@/components/ui/page-head";
@@ -56,6 +56,20 @@ function unwrap<T>(rel: T | T[] | null | undefined): T | null {
 type PickerTab = "catalogo" | "eventos";
 
 export default function SpaceStudioPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="empty">
+          <div className="msg">Cargando…</div>
+        </div>
+      }
+    >
+      <SpaceStudioInner />
+    </Suspense>
+  );
+}
+
+function SpaceStudioInner() {
   const params = useSearchParams();
   const presetAnnex = params.get("annex_id");
   const presetEvento = params.get("evento_id");
