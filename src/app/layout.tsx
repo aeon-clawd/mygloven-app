@@ -4,6 +4,7 @@ import "./globals.css";
 import { CustomCursor } from "@/components/layout/custom-cursor";
 import { AccentBoot } from "@/components/layout/accent-boot";
 import { ThemeBoot } from "@/components/layout/theme-boot";
+import { MobileBlock } from "@/components/layout/mobile-block";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -51,6 +52,7 @@ export default function RootLayout({
         <AccentBoot />
         <CustomCursor />
         {children}
+        <MobileBlock />
       </body>
     </html>
   );
