@@ -1,22 +1,35 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Monitor } from "lucide-react";
-import { Logo } from "./logo";
 
 export function MobileBlock() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  if (!isMobile) return null;
+
   return (
     <div
-      className="md:hidden fixed inset-0 z-[9999] flex flex-col bg-background text-text-primary"
+      className="fixed inset-0 z-[9999] flex flex-col bg-background text-text-primary"
       style={{ cursor: "auto" }}
       role="dialog"
       aria-modal="true"
       aria-label="Versión móvil no disponible"
     >
       <div className="flex items-center justify-between px-6 py-5 border-b border-rule">
-        <Logo className="h-7" />
         <span
-          className="font-mono text-[10px] uppercase text-text-muted"
-          style={{ letterSpacing: "var(--tracking-wider)" }}
+          className="font-[family-name:var(--font-display)] font-bold text-xl"
+          style={{ letterSpacing: "-0.03em" }}
         >
-          v0.1 · WIP
+          my<span style={{ color: "var(--color-accent)" }}>&apos;</span>G
         </span>
       </div>
 
@@ -39,23 +52,11 @@ export function MobileBlock() {
           Versión móvil en construcción
         </h1>
 
-        <p className="text-sm text-text-secondary leading-relaxed max-w-xs mb-10">
-          Estamos trabajando en la experiencia móvil de my&apos;G.
+        <p className="text-sm text-text-secondary leading-relaxed max-w-xs">
+          Estamos trabajando en la experiencia móvil de my
+          <span style={{ color: "var(--color-accent)" }}>&apos;</span>G.
           Mientras tanto, accede desde un ordenador para usar la plataforma.
         </p>
-
-        <div className="w-full max-w-xs border border-rule rounded-[var(--radius-md)] bg-surface px-4 py-3 flex items-start gap-3 text-left">
-          <span
-            className="font-mono text-[10px] uppercase text-text-muted mt-0.5 shrink-0"
-            style={{ letterSpacing: "var(--tracking-wider)" }}
-          >
-            tip
-          </span>
-          <p className="text-xs text-text-secondary leading-relaxed">
-            Anchura mínima recomendada: <span className="font-mono text-text-primary">768&nbsp;px</span>.
-            Abre my&apos;G desde un portátil o sobremesa.
-          </p>
-        </div>
       </div>
 
       <div className="px-6 py-4 border-t border-rule">
